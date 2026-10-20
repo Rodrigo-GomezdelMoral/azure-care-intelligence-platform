@@ -19,7 +19,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 
 from src.components.prep import IDENTIFIER, contract
-from src.economics import Array, Economics, arguments, contacted, summary
+from src.economics import Array, Economics, arguments, contacted, policies, summary
 from src.fairness import audit, disparities
 
 BINS = 10
@@ -46,6 +46,8 @@ def evaluate(model: Any, test: pd.DataFrame, economics: Economics) -> dict[str, 
     metrics = {"auc": roc_auc_score(outcomes, scores), "average_precision": average_precision_score(outcomes, scores)}
     metrics |= {"brier": brier_score_loss(outcomes, scores), "calibration_error": error, "patients": len(test)}
     metrics |= summary(outcomes, scores, economics)
+    for policy, priced in policies(outcomes, scores, economics).items():
+        metrics |= {f"policy_{policy}_{name}": value for name, value in priced.items()}
     fairness = audit(test, outcomes, scores, contacted(scores, economics.contact_share))
     metrics |= disparities(fairness)
     return {

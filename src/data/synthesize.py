@@ -1,15 +1,11 @@
 """Synthetic chronic-care cohort. No real patient was used, seen or approximated.
 
 A documented causal structure (ADR-008) draws a seed population from published adherence and
-readmission distributions: polypharmacy, deprivation, depression, copays and living alone lower
-adherence; low adherence, comorbidity burden, prior admissions, age and deprivation raise the
-30-day readmission risk. The structure has two layers: CTGAN learns the joint distribution of the
-root variables (sex, age, urbanicity, deprivation, language, employment, insurance) from the seed
-and samples it for the published cohort, conditioned on the documented categorical marginals;
-every variable with a parent in the graph (household, conditions, prescriptions, adherence,
-contacts, measurements, the outcome) is then computed by the same equations on the sampled rows,
-so the signal a model can find is the one the equations put there. Clinical columns follow OMOP
-CDM naming (person, condition_occurrence, drug_era, visit_occurrence, measurement).
+readmission distributions, one feature per line in causal order. CTGAN learns only the root
+layer (sex, age, urbanicity, deprivation, language, employment, insurance) and samples it under
+the documented categorical marginals; everything with a parent in the graph, the label included,
+is recomputed by the same equations, so the signal a model finds is the one the equations put
+there. Clinical columns follow OMOP CDM naming.
 """
 
 import argparse
@@ -35,17 +31,9 @@ ROLES |= {"prescription": ("drug_", "pdc_", "adherent", "days_supply", "generic"
 ROLES["prescription"] += ("high_risk", "refill", "polyph")
 ROLES |= {"contact": ("inpatient", "emergency", "visit", "days_since", "missed", "telehealth", "care_manager")}
 ROLES["contact"] += ("portal", "observation", "prior")
-MARGINALS: dict[str, dict[Any, float]] = {
-    "gender_concept_id": {8507: 0.48, 8532: 0.52},
-    "language_barrier": {False: 0.92, True: 0.08},
-}
-MARGINALS |= {"urbanicity": {0: 0.25, 1: 0.45, 2: 0.30}, "employment_status": {0: 0.55, 1: 0.30, 2: 0.15}}
-MARGINALS |= {"insurance_type": {0: 0.60, 1: 0.30, 2: 0.10}}
-Array = np.ndarray[Any, Any]
-
-
-def sigmoid(x: Array) -> Array:
-    return np.asarray(1 / (1 + np.exp(-x)))
+MARGINALS: dict[str, dict[Any, float]] = {"gender_concept_id": {8507: 0.48, 8532: 0.52}}
+MARGINALS |= {"language_barrier": {False: 0.92, True: 0.08}, "urbanicity": {0: 0.25, 1: 0.45, 2: 0.30}}
+MARGINALS |= {"employment_status": {0: 0.55, 1: 0.30, 2: 0.15}, "insurance_type": {0: 0.60, 1: 0.30, 2: 0.10}}
 
 
 def roots(f: pd.DataFrame, rng: np.random.Generator) -> None:
@@ -97,7 +85,7 @@ def adherence_and_contacts(f: pd.DataFrame, rng: np.random.Generator) -> None:
     logit = 1.6 - 0.22 * np.maximum(f["drug_era_count"] - 4, 0) - 0.09 * strain - 0.55 * f["condition_depression"]
     logit += -0.35 * f["lives_alone"] - 0.012 * f["copay_mean_eur"] + 0.45 * f["has_caregiver"]
     logit += 0.25 * (f["care_manager_contacts_12m"] > 0) - 0.3 * f["language_barrier"]
-    f["pdc_180d"] = sigmoid(np.asarray(logit + rng.normal(0, 0.6, rows))).round(3)
+    f["pdc_180d"] = (1 / (1 + np.exp(-(logit + rng.normal(0, 0.6, rows))))).round(3)
     f["pdc_90d"] = np.clip(f["pdc_180d"] + rng.normal(0, 0.08, rows), 0, 1).round(3)
     f["adherent_80"] = f["pdc_180d"] >= 0.8
     f["inpatient_admissions_12m"] = rng.poisson(0.25 + 0.12 * f["charlson_index"] + 1.2 * (1 - f["pdc_180d"]), rows)
@@ -126,7 +114,7 @@ def outcome(frame: pd.DataFrame, rng: np.random.Generator) -> pd.Series:
     logit = -3.6 + 1.9 * (1 - frame["pdc_180d"]) + 0.32 * frame["charlson_index"]
     logit += 0.55 * (frame["inpatient_admissions_12m"] > 0) + 0.018 * (frame["age"] - 65)
     logit += 0.05 * frame["deprivation_index"] + 0.4 * frame["condition_heart_failure"] - 0.3 * frame["has_caregiver"]
-    return pd.Series(rng.random(len(frame)) < sigmoid(np.asarray(logit)), index=frame.index, name=LABEL)
+    return pd.Series(rng.random(len(frame)) < 1 / (1 + np.exp(-logit)), index=frame.index, name=LABEL)
 
 
 def seed_cohort(rows: int, rng: np.random.Generator) -> pd.DataFrame:
@@ -161,8 +149,7 @@ def synthesize(seed: pd.DataFrame, rows: int, epochs: int, rng: np.random.Genera
     synthesizer = CTGANSynthesizer(metadata, epochs=epochs, verbose=False)
     synthesizer.fit({"patients": exogenous})
     sampled = synthesizer.sample_from_conditions(sampling_conditions(rows), max_tries_per_batch=500)
-    frame = (sampled["patients"] if isinstance(sampled, dict) else sampled).reset_index(drop=True)
-    frame = frame.astype(exogenous.dtypes.to_dict())
+    frame = sampled.reset_index(drop=True).astype(exogenous.dtypes.to_dict())
     frame.insert(0, "person_id", np.arange(1, len(frame) + 1))
     for stage in ENDOGENOUS:
         stage(frame, rng)
@@ -187,11 +174,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--rows", type=int, default=ROWS)
     parser.add_argument("--epochs", type=int, default=EPOCHS)
-    parser.add_argument("--seed-only", action="store_true", help="skip CTGAN and publish the causal seed itself")
     args = parser.parse_args()
     generator = np.random.default_rng(SEED)
-    cohort = seed_cohort(args.rows if args.seed_only else SEED_ROWS, generator)
-    cohort = cohort if args.seed_only else synthesize(cohort, args.rows, args.epochs, generator)
+    cohort = synthesize(seed_cohort(SEED_ROWS, generator), args.rows, args.epochs, generator)
     DATA.mkdir(exist_ok=True)
     cohort.to_parquet(DATA / "cohort.parquet", index=False)
     (DATA / "schema.json").write_text(json.dumps(schema(cohort), indent=1), encoding="utf-8")

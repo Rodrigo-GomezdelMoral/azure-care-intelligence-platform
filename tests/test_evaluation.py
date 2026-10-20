@@ -11,7 +11,7 @@ from sklearn.linear_model import LogisticRegression
 from src.components.prep import contract, encode, validate
 from src.components.register import CHALLENGER, CHAMPION, REJECTED, decide, main
 from src.data.synthesize import LABEL, seed_cohort
-from src.economics import METRIC, Economics, contacted, cost_avoided
+from src.economics import METRIC, Economics, contacted, cost_avoided, policies
 from src.fairness import MEASURES, SUBGROUPS, audit, disparities
 
 
@@ -55,10 +55,13 @@ def test_the_fairness_audit_covers_every_subgroup_with_parity_ratios() -> None:
 
 
 def test_a_contact_pays_for_itself_above_a_few_percent_and_any_policy_is_priced_alike() -> None:
-    economics = Economics()
+    economics = Economics(contact_share=0.2)
     assert economics.break_even == pytest.approx(35 / (0.25 * 4800))
     assert economics.expected_value(np.array([0.01]))[0] < 0 < economics.expected_value(np.array([0.5]))[0]
     outcomes, scores = np.array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0]), np.linspace(1, 0, 10)
     by_threshold = cost_avoided(outcomes, scores > economics.break_even, economics)
     by_capacity = cost_avoided(outcomes, contacted(scores, 0.2), economics)
     assert by_capacity[METRIC] > by_threshold[METRIC] and by_threshold["contacts"] == 9
+    priced = policies(outcomes, scores, economics)
+    assert set(priced) == {"capacity", "break_even", "f1_optimal"} and priced["capacity"] == by_capacity
+    assert priced["f1_optimal"]["contacts"] == 2, "the F1 optimum on a perfect ranking is the two positives"

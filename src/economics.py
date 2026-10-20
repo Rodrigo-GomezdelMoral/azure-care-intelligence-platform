@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Self
 
 import numpy as np
+from sklearn.metrics import precision_recall_curve
 
 METRIC = "cost_avoided_per_thousand"
 Array = np.ndarray[Any, Any]
@@ -61,6 +62,15 @@ def cost_avoided(outcomes: Array, chosen: Array, economics: Economics) -> dict[s
     contacts, hits = int(chosen.sum()), float(np.asarray(outcomes, dtype=float)[chosen].sum())
     avoided = hits * economics.effectiveness * economics.readmission_cost - contacts * economics.contact_cost
     return {"contacts": contacts, "precision": hits / max(contacts, 1), METRIC: avoided / max(contacts, 1) * 1000}
+
+
+def policies(outcomes: Array, scores: Array, economics: Economics) -> dict[str, dict[str, float]]:
+    """Three ways to decide whom to contact, priced alike: capacity, break-even probability, F1-optimal threshold."""
+    precision, recall, thresholds = precision_recall_curve(outcomes, scores)
+    f1 = 2 * precision[:-1] * recall[:-1] / np.maximum(precision[:-1] + recall[:-1], 1e-9)
+    rules = {"capacity": contacted(scores, economics.contact_share), "break_even": scores > economics.break_even}
+    rules |= {"f1_optimal": scores >= thresholds[int(np.argmax(f1))]}
+    return {name: cost_avoided(outcomes, chosen, economics) for name, chosen in rules.items()}
 
 
 def summary(outcomes: Array, scores: Array, economics: Economics) -> dict[str, float]:
