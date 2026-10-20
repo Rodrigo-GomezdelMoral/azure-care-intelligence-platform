@@ -1,0 +1,17 @@
+name: careintel-serving
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - mlflow==2.22.5
+      - azureml-mlflow==1.62.0.post6
+      - scikit-learn==1.9.1
+      - pandas==2.3.3
+      - numpy==2.3.2
+      - pyarrow==19.0.1
+      - shap==0.54.1
+      - azureml-inference-server-http==1.5.1
+      - azureml-core==1.61.0.post4
+      - azureml-dataset-runtime[fuse]==1.62.0

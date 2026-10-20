@@ -78,6 +78,7 @@ module apps 'modules/apps.bicep' = {
       AZURE_SUBSCRIPTION_ID: subscription().subscriptionId, AZURE_RESOURCE_GROUP: resourceGroup().name, AML_WORKSPACE: workspace.outputs.workspaceName
       POSTGRES_HOST: data.outputs.postgresHost, POSTGRES_DATABASE: data.outputs.databaseName, ENTRA_TENANT_ID: tenant().tenantId
       API_AUDIENCE: 'api://${apiAppClientId}', MODEL_NAME: 'readmission-risk', ONLINE_ENDPOINT: 'ep-readmission-risk', BATCH_ENDPOINT: 'bep-cohort-scoring'
+      POSTGRES_USER: 'id-careapi', REQUIRE_AUTH: 'true'
     }
   }
 }

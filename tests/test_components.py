@@ -7,7 +7,7 @@ import pytest
 from azure.ai.ml import Input
 from mlflow import MlflowClient
 
-from pipelines.training import INSTANCE, PRIMARY_METRIC, SPACE, STEPS, TRIAL_INSTANCE, training, tuning
+from pipelines.training import CLUSTER, INSTANCE, PRIMARY_METRIC, SPACE, STEPS, training, tuning
 from src.components.evaluate import evaluate
 from src.components.prep import SchemaDriftError, contract, encode, split, validate
 from src.components.register import CHALLENGER, CHAMPION, STAGE, champion
@@ -98,7 +98,7 @@ def test_the_tuning_pipeline_sweeps_the_metric_that_train_logs() -> None:
     sweep = job._to_dict()["jobs"]["train"]
     assert sweep["type"] == "sweep" and sweep["sampling_algorithm"] == "bayesian"
     assert sweep["objective"] == {"goal": "maximize", "primary_metric": PRIMARY_METRIC}
-    assert set(sweep["search_space"]) == set(SPACE) and sweep["resources"]["instance_type"] == TRIAL_INSTANCE
+    assert set(sweep["search_space"]) == set(SPACE) and sweep["compute"].endswith(CLUSTER)
     logged = {f"validation_{name}" for name in summary(np.array([1, 0]), np.array([0.9, 0.1]), Economics())}
     assert PRIMARY_METRIC in logged, "the sweep optimises nothing unless the name matches what train logs"
     assert job._to_dict()["jobs"]["evaluate"]["inputs"]["model"]["path"] == "${{parent.jobs.train.outputs.model}}"

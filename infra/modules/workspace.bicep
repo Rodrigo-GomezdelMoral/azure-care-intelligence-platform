@@ -15,7 +15,10 @@ var diagnostics = { workspaceId: logAnalyticsWorkspaceId, logs: [{ categoryGroup
 var workspaceGrants = [{ principalId: amlPrincipalId, type: 'ServicePrincipal' }, { principalId: apiPrincipalId, type: 'ServicePrincipal' }]
 // The workspace grants its own system identity Storage Blob Data Contributor, Key Vault Administrator and Azure AI Administrator on the registry at creation; declaring them again fails with RoleAssignmentExists.
 var storageGrants = [
-  { principalId: amlPrincipalId, type: 'ServicePrincipal' }, { principalId: cicdPrincipalId, type: 'ServicePrincipal' }, { principalId: operatorObjectId, type: 'User' }
+  { principalId: amlPrincipalId, type: 'ServicePrincipal', role: storageBlobDataContributor }, { principalId: cicdPrincipalId, type: 'ServicePrincipal', role: storageBlobDataContributor }
+  { principalId: operatorObjectId, type: 'User', role: storageBlobDataContributor }
+  // Parallel Run Step, which runs every batch deployment, keeps its state in tables and queues of the same account.
+  { principalId: amlPrincipalId, type: 'ServicePrincipal', role: '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3' }, { principalId: amlPrincipalId, type: 'ServicePrincipal', role: '974c5e8b-45b9-4653-ba55-5f855dd0fb88' }
 ]
 
 resource storage 'Microsoft.Storage/storageAccounts@2026-06-01' = {
@@ -56,6 +59,17 @@ resource workspace 'Microsoft.MachineLearningServices/workspaces@2026-05-01' = {
   }
 }
 
+resource cluster 'Microsoft.MachineLearningServices/workspaces/computes@2026-05-01' = {
+  parent: workspace
+  name: 'cpu-cluster'
+  location: location
+  identity: { type: 'UserAssigned', userAssignedIdentities: { '${amlIdentityId}': {} } }
+  properties: {
+    computeType: 'AmlCompute'
+    properties: { vmSize: 'Standard_DS2_v2', vmPriority: 'Dedicated', osType: 'Linux', scaleSettings: { minNodeCount: 0, maxNodeCount: 3, nodeIdleTimeBeforeScaleDown: 'PT5M' } }
+  }
+}
+
 resource workspaceAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for grant in workspaceGrants: {
   name: guid(workspace.id, grant.principalId, dataScientist)
   scope: workspace
@@ -63,9 +77,9 @@ resource workspaceAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
 }]
 
 resource storageAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for grant in storageGrants: {
-  name: guid(storage.id, grant.principalId, storageBlobDataContributor)
+  name: guid(storage.id, grant.principalId, grant.role)
   scope: storage
-  properties: { roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributor), principalId: grant.principalId, principalType: grant.type }
+  properties: { roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', grant.role), principalId: grant.principalId, principalType: grant.type }
 }]
 
 resource workspaceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {

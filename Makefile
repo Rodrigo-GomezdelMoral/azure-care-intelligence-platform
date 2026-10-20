@@ -37,7 +37,7 @@ sweep:
 	$(PYTHON) -m pipelines.training --sweep
 
 endpoints:
-	$(PYTHON) -m ops.endpoints
+	$(PYTHON) -m ops.endpoints --online --batch
 
 batch:
 	$(PYTHON) -m pipelines.scoring

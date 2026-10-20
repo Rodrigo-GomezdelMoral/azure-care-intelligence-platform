@@ -25,7 +25,7 @@ from src.economics import METRIC
 COMPONENTS = Path(__file__).resolve().parents[1] / "src" / "components"
 STEPS = ("prep", "train", "evaluate", "register")
 EXPERIMENT, MODEL_NAME = "readmission-risk", "readmission-risk"
-INSTANCE, TRIAL_INSTANCE, TRIALS, CONCURRENT = "Standard_DS3_v2", "Standard_DS2_v2", 12, 3
+INSTANCE, CLUSTER, TRIALS, CONCURRENT = "Standard_DS3_v2", "cpu-cluster", 12, 3
 PRIMARY_METRIC = f"validation_{METRIC}"
 SPACE: dict[str, Any] = {"learning_rate": Uniform(0.02, 0.2), "max_iter": Choice([100, 200, 400])}
 SPACE |= {"max_leaf_nodes": Choice([15, 31, 63]), "min_samples_leaf": Choice([10, 20, 50, 100])}
@@ -36,9 +36,9 @@ def components() -> dict[str, Any]:
     return {name: load_component(source=str(COMPONENTS / f"{name}.yml")) for name in STEPS}
 
 
-def serverless(node: Any, instance: str = INSTANCE) -> Any:
+def serverless(node: Any) -> Any:
     """Serverless compute provisions one node of this size for the step and releases it afterwards."""
-    node.resources = JobResourceConfiguration(instance_type=instance, instance_count=1)
+    node.resources = JobResourceConfiguration(instance_type=INSTANCE, instance_count=1)
     return node
 
 
@@ -83,9 +83,8 @@ def tune(
     prep = serverless(step["prep"](cohort=cohort, seed=seed))
     splits = {"train": prep.outputs.train, "validation": prep.outputs.validation}
     trial = step["train"](**splits, family=FAMILIES[0], seed=seed, contact_share=contact_share, **SPACE)
-    train = trial.sweep(primary_metric=PRIMARY_METRIC, goal="maximize", sampling_algorithm="bayesian")
+    train = trial.sweep(primary_metric=PRIMARY_METRIC, goal="maximize", sampling_algorithm="bayesian", compute=CLUSTER)
     train.set_limits(max_total_trials=TRIALS, max_concurrent_trials=CONCURRENT, trial_timeout=1800)
-    serverless(train, TRIAL_INSTANCE)
     return finish(step, prep, train, contact_share, {"data_asset": data_asset, "min_improvement": min_improvement})
 
 
@@ -96,8 +95,8 @@ tuning = pipeline(tune, name="tuning", display_name="Readmission risk tuning", d
 def submit(client: MLClient, job: PipelineJob, identity: str, tags: dict[str, str], wait: bool) -> PipelineJob:
     """Steps run as the pipeline identity; serverless offers no system-assigned one and user tokens cannot pull.
 
-    Command nodes carry it; a sweep node's identity is dropped by SDK and service alike, so its trials cannot
-    pull the image yet (measured; see CLAUDE.md), and the job-level identity is set for when the service honours it.
+    Command nodes carry it; a sweep node's identity is dropped by SDK and service alike (measured; see CLAUDE.md),
+    so the trials run on the scale-to-zero cluster, whose own identity is the same `id-careaml`.
     """
     job.identity = ManagedIdentityConfiguration(client_id=identity)
     for node in job.jobs.values():
