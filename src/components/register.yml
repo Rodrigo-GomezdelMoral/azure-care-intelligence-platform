@@ -2,8 +2,8 @@ $schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.jso
 type: command
 name: register
 display_name: Register model
-version: 1
-description: Registers the evaluated model with its metrics and data asset as version tags, and marks it champion or challenger with the stage tag.
+version: 2
+description: Registers the evaluated model as champion or challenger only if it beats the champion on cost avoided per thousand contacts; otherwise refuses and records the comparison.
 inputs:
   model:
     type: mlflow_model
@@ -14,6 +14,12 @@ inputs:
     default: readmission-risk
   data_asset:
     type: string
+  min_improvement:
+    type: number
+    default: 0.0
+outputs:
+  decision:
+    type: uri_file
 code: ../..
 environment:
   image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
@@ -21,3 +27,4 @@ environment:
 command: >-
   python -m src.components.register --model ${{inputs.model}} --metrics ${{inputs.metrics}}
   --model-name ${{inputs.model_name}} --data-asset ${{inputs.data_asset}}
+  --min-improvement ${{inputs.min_improvement}} --decision ${{outputs.decision}}

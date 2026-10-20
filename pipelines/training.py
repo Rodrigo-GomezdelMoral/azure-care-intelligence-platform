@@ -44,6 +44,7 @@ def compose(
     max_leaf_nodes: int = 31,
     min_samples_leaf: int = 20,
     l2_regularization: float = 0.0,
+    min_improvement: float = 0.0,
 ) -> dict[str, Any]:
     """prep, train, evaluate, register; the model and the evaluation report are the pipeline's outputs."""
     step = components()
@@ -56,8 +57,9 @@ def compose(
         step["evaluate"](model=train.outputs.model, test=prep.outputs.test, contact_share=contact_share)
     )
     outputs = {"model": train.outputs.model, "metrics": evaluate.outputs.metrics}
-    serverless(step["register"](**outputs, model_name=MODEL_NAME, data_asset=data_asset))
-    return outputs
+    gate = {"model_name": MODEL_NAME, "data_asset": data_asset, "min_improvement": min_improvement}
+    register = serverless(step["register"](**outputs, **gate))
+    return outputs | {"decision": register.outputs.decision}
 
 
 training = pipeline(compose, name="training", display_name="Readmission risk training", default_compute="serverless")
@@ -80,6 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--data-version", default="1")
     parser.add_argument("--family", choices=FAMILIES, default=FAMILIES[0])
     parser.add_argument("--contact-share", type=float, default=0.02)
+    parser.add_argument("--min-improvement", type=float, default=0.0)
     parser.add_argument("--wait", action="store_true")
     for name, default in DEFAULTS.items():
         parser.add_argument(f"--{name.replace('_', '-')}", type=type(default), default=default)
@@ -87,7 +90,8 @@ if __name__ == "__main__":
     asset = f"{ASSET}:{args.data_version}"
     params = {name: getattr(args, name) for name in DEFAULTS}
     cohort = Input(type="uri_file", path=f"azureml:{asset}")
-    job = training(cohort=cohort, data_asset=asset, family=args.family, contact_share=args.contact_share, **params)
+    policy = {"contact_share": args.contact_share, "min_improvement": args.min_improvement}
+    job = training(cohort=cohort, data_asset=asset, family=args.family, **policy, **params)
     submit(
         workspace(), job, os.environ["AML_IDENTITY_CLIENT_ID"], {"data_asset": asset, "family": args.family}, args.wait
     )

@@ -1,30 +1,41 @@
-"""Registers the evaluated model in the workspace registry and marks the champion with a tag.
+"""Registers the evaluated model only if it beats the champion on the business metric (ADR-003).
 
 A registered version carries the metrics it earned on the test split and the data asset it was
-trained on as tags, so a reviewer reads the comparison without opening a run. The first version
-becomes the champion; every later one is registered as a challenger. Phase 5 turns this into the
-gate that refuses a challenger that does not beat the champion on the business metric, and
-promoting a challenger to champion stays a human decision taken in the deployment workflow. The
-role is the version tag `stage`, because the workspace registry accepts neither MLflow aliases
-nor the deprecated stages API.
+trained on as tags, so the comparison is read from the registry, not from a run. The first
+version becomes the champion; a later one is registered as a challenger only when its cost
+avoided per thousand contacts exceeds the champion's by the required margin, and is refused
+otherwise, with the comparison logged and written for the workflow to publish. Ties lose, since
+a model that is not better has not earned a registration. Promoting a challenger to champion
+stays a human decision taken in the deployment workflow. The role is the version tag `stage`,
+because the workspace registry accepts neither MLflow aliases nor the deprecated stages API.
 """
 
 import argparse
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import mlflow
 from mlflow import MlflowClient
 from mlflow.entities.model_registry import ModelVersion
 from mlflow.models import Model
 
-STAGE, CHAMPION, CHALLENGER = "stage", "champion", "challenger"
+from src.economics import METRIC
+
+STAGE, CHAMPION, CHALLENGER, REJECTED = "stage", "champion", "challenger", "rejected"
 
 
 def champion(client: MlflowClient, name: str) -> ModelVersion | None:
     versions = client.search_model_versions(f"name='{name}'")
     return next((version for version in versions if version.tags.get(STAGE) == CHAMPION), None)
+
+
+def decide(incumbent: float | None, challenger: float, min_improvement: float = 0.0) -> str:
+    """Champion when there is nothing to beat; challenger when it beats the champion by the margin; else rejected."""
+    if incumbent is None:
+        return CHAMPION
+    return CHALLENGER if challenger > incumbent + min_improvement else REJECTED
 
 
 def register(path: Path, name: str, tags: dict[str, str]) -> ModelVersion:
@@ -37,20 +48,36 @@ def register(path: Path, name: str, tags: dict[str, str]) -> ModelVersion:
     return version
 
 
-def main(args: argparse.Namespace) -> str:
+def compare(report: dict[str, Any], incumbent: ModelVersion | None, min_improvement: float) -> dict[str, Any]:
+    decision: dict[str, Any] = {"challenger": report["metrics"][METRIC], "min_improvement": min_improvement}
+    decision |= {"champion": float(incumbent.tags[METRIC]) if incumbent else None}
+    decision |= {"champion_version": str(incumbent.version) if incumbent else None}
+    decision["decision"] = decide(decision["champion"], decision["challenger"], min_improvement)
+    return decision
+
+
+def main(args: argparse.Namespace) -> dict[str, Any]:
+    """One run per registration attempt; the comparison is logged whether or not a version is created."""
     report = json.loads(args.metrics.read_text(encoding="utf-8"))
-    role = CHALLENGER if champion(MlflowClient(), args.model_name) else CHAMPION
-    tags = {name: f"{value:.4f}" for name, value in report["metrics"].items()}
-    tags |= {STAGE: role, "data_asset": args.data_asset, "pipeline_run": os.environ.get("AZUREML_ROOT_RUN_ID", "local")}
-    version = register(args.model, args.model_name, tags)
-    mlflow.log_params({"registered_version": version.version, STAGE: role})
-    return f"{args.model_name}:{version.version} is the {role}"
+    with mlflow.start_run():
+        decision = compare(report, champion(MlflowClient(), args.model_name), args.min_improvement)
+        if decision["decision"] != REJECTED:
+            tags = {name: f"{value:.4f}" for name, value in report["metrics"].items()}
+            tags |= {STAGE: decision["decision"], "data_asset": args.data_asset}
+            tags |= {"pipeline_run": os.environ.get("AZUREML_ROOT_RUN_ID", "local")}
+            decision["registered_version"] = register(args.model, args.model_name, tags).version
+        mlflow.log_params({name: str(value) for name, value in decision.items()})
+    args.decision.parent.mkdir(parents=True, exist_ok=True)
+    args.decision.write_text(json.dumps(decision, indent=1), encoding="utf-8")
+    return decision
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=Path, required=True)
     parser.add_argument("--metrics", type=Path, required=True)
+    parser.add_argument("--decision", type=Path, required=True)
     parser.add_argument("--model-name", default="readmission-risk")
     parser.add_argument("--data-asset", required=True)
+    parser.add_argument("--min-improvement", type=float, default=0.0)
     print(main(parser.parse_args()))

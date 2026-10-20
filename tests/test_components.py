@@ -90,3 +90,4 @@ def test_the_pipeline_composes_the_four_components_offline() -> None:
     assert wiring["train"]["inputs"]["train"]["path"] == "${{parent.jobs.prep.outputs.train}}"
     assert wiring["evaluate"]["inputs"]["model"]["path"] == "${{parent.jobs.train.outputs.model}}"
     assert wiring["register"]["inputs"]["metrics"]["path"] == "${{parent.jobs.evaluate.outputs.metrics}}"
+    assert set(job._to_dict()["outputs"]) == {"model", "metrics", "decision"}

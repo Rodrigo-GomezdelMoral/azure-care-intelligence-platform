@@ -4,8 +4,8 @@ Discrimination (AUC, average precision) says whether the ranking is right. Calib
 score, expected calibration error and the reliability table behind it) says whether the
 probabilities can be trusted when the expected value of a contact is computed from them. The
 business metric says what the ranking is worth under the programme's capacity, and is the number
-the registration gate compares. Everything is logged to MLflow and written to `metrics.json`;
-phase 5 adds the subgroup audit to the same report.
+the registration gate compares (ADR-003). The fairness audit looks at the same contacted set by
+subgroup. Everything is logged to MLflow and written to `metrics.json`.
 """
 
 import argparse
@@ -19,7 +19,8 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 
 from src.components.prep import IDENTIFIER, contract
-from src.economics import Array, Economics, arguments, summary
+from src.economics import Array, Economics, arguments, contacted, summary
+from src.fairness import audit, disparities
 
 BINS = 10
 
@@ -45,7 +46,13 @@ def evaluate(model: Any, test: pd.DataFrame, economics: Economics) -> dict[str, 
     metrics = {"auc": roc_auc_score(outcomes, scores), "average_precision": average_precision_score(outcomes, scores)}
     metrics |= {"brier": brier_score_loss(outcomes, scores), "calibration_error": error, "patients": len(test)}
     metrics |= summary(outcomes, scores, economics)
-    return {"metrics": {name: float(value) for name, value in metrics.items()}, "calibration": table}
+    fairness = audit(test, outcomes, scores, contacted(scores, economics.contact_share))
+    metrics |= disparities(fairness)
+    return {
+        "metrics": {name: float(value) for name, value in metrics.items()},
+        "calibration": table,
+        "fairness": fairness,
+    }
 
 
 def main(args: argparse.Namespace) -> dict[str, float]:
