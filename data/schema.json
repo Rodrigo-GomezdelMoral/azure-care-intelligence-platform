@@ -1,0 +1,242 @@
+{
+ "label": "readmission_30d",
+ "features": 57,
+ "columns": {
+  "person_id": {
+   "dtype": "int64",
+   "role": "person"
+  },
+  "gender_concept_id": {
+   "dtype": "int64",
+   "role": "demographic"
+  },
+  "language_barrier": {
+   "dtype": "bool",
+   "role": "socioeconomic"
+  },
+  "urbanicity": {
+   "dtype": "int64",
+   "role": "demographic"
+  },
+  "employment_status": {
+   "dtype": "int64",
+   "role": "socioeconomic"
+  },
+  "insurance_type": {
+   "dtype": "int64",
+   "role": "socioeconomic"
+  },
+  "age": {
+   "dtype": "float64",
+   "role": "demographic"
+  },
+  "deprivation_index": {
+   "dtype": "float64",
+   "role": "socioeconomic"
+  },
+  "year_of_birth": {
+   "dtype": "float64",
+   "role": "demographic"
+  },
+  "income_quintile": {
+   "dtype": "int64",
+   "role": "socioeconomic"
+  },
+  "education_years": {
+   "dtype": "float64",
+   "role": "socioeconomic"
+  },
+  "lives_alone": {
+   "dtype": "bool",
+   "role": "socioeconomic"
+  },
+  "has_caregiver": {
+   "dtype": "bool",
+   "role": "socioeconomic"
+  },
+  "distance_to_pharmacy_km": {
+   "dtype": "float64",
+   "role": "socioeconomic"
+  },
+  "transport_access": {
+   "dtype": "bool",
+   "role": "socioeconomic"
+  },
+  "condition_type2_diabetes": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_hypertension": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_copd": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_heart_failure": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_ckd": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_depression": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_atrial_fibrillation": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_obesity": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_asthma": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "condition_cancer": {
+   "dtype": "bool",
+   "role": "comorbidity"
+  },
+  "charlson_index": {
+   "dtype": "int64",
+   "role": "comorbidity"
+  },
+  "drug_era_count": {
+   "dtype": "int64",
+   "role": "prescription"
+  },
+  "polypharmacy": {
+   "dtype": "bool",
+   "role": "prescription"
+  },
+  "drug_count_active": {
+   "dtype": "int64",
+   "role": "prescription"
+  },
+  "days_supply_mean": {
+   "dtype": "int64",
+   "role": "prescription"
+  },
+  "generic_share": {
+   "dtype": "float64",
+   "role": "prescription"
+  },
+  "copay_mean_eur": {
+   "dtype": "float64",
+   "role": "prescription"
+  },
+  "pharmacy_count": {
+   "dtype": "int64",
+   "role": "prescription"
+  },
+  "prescriber_count": {
+   "dtype": "int64",
+   "role": "prescription"
+  },
+  "high_risk_drug_count": {
+   "dtype": "int64",
+   "role": "prescription"
+  },
+  "drug_insulin": {
+   "dtype": "bool",
+   "role": "prescription"
+  },
+  "drug_anticoagulant": {
+   "dtype": "bool",
+   "role": "prescription"
+  },
+  "drug_antidepressant": {
+   "dtype": "bool",
+   "role": "prescription"
+  },
+  "drug_statin": {
+   "dtype": "bool",
+   "role": "prescription"
+  },
+  "refill_gap_days_mean": {
+   "dtype": "float64",
+   "role": "prescription"
+  },
+  "care_manager_contacts_12m": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "pdc_180d": {
+   "dtype": "float64",
+   "role": "prescription"
+  },
+  "pdc_90d": {
+   "dtype": "float64",
+   "role": "prescription"
+  },
+  "adherent_80": {
+   "dtype": "bool",
+   "role": "prescription"
+  },
+  "inpatient_admissions_12m": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "emergency_visits_12m": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "visit_occurrence_count_12m": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "days_since_last_visit": {
+   "dtype": "float64",
+   "role": "contact"
+  },
+  "missed_appointments_12m": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "telehealth_visits_12m": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "portal_logins_90d": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "observation_period_days": {
+   "dtype": "int64",
+   "role": "contact"
+  },
+  "prior_readmission": {
+   "dtype": "bool",
+   "role": "contact"
+  },
+  "measurement_hba1c": {
+   "dtype": "float64",
+   "role": "measurement"
+  },
+  "measurement_systolic_bp": {
+   "dtype": "float64",
+   "role": "measurement"
+  },
+  "measurement_ldl": {
+   "dtype": "float64",
+   "role": "measurement"
+  },
+  "measurement_egfr": {
+   "dtype": "float64",
+   "role": "measurement"
+  },
+  "measurement_bmi": {
+   "dtype": "float64",
+   "role": "measurement"
+  },
+  "readmission_30d": {
+   "dtype": "bool",
+   "role": "outcome"
+  }
+ }
+}
