@@ -2,7 +2,7 @@ PYTHON ?= python
 RESOURCE_GROUP ?= rg-careintel-prod-swc
 LZ_OUTPUTS ?= ../lz-outputs.txt
 
-.PHONY: install install-synth lint type test budget check synth data pipeline sweep endpoints batch drift api lz-env validate-infra preview deploy destroy
+.PHONY: install install-synth lint type test budget check synth data pipeline sweep endpoints batch drift api pg-roles lz-env validate-infra preview deploy destroy
 
 install:
 	$(PYTHON) -m pip install -r requirements-dev.txt
@@ -47,6 +47,9 @@ drift:
 
 api:
 	uvicorn api.main:app --reload --port 8000
+
+pg-roles:
+	$(PYTHON) -m ops.pg_roles --admin $(PG_ADMIN)
 
 lz-env:
 	@export MSYS_NO_PATHCONV=1; grep -E '^[a-z][A-Za-z]+=' $(LZ_OUTPUTS) | while IFS='=' read -r key value; do \
