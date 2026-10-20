@@ -1,0 +1,35 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: evaluate
+display_name: Evaluate on the test split
+version: 1
+description: Discrimination, calibration and cost avoided per thousand contacts on the held-out test split, logged to MLflow and written as the report the registration gate reads.
+inputs:
+  model:
+    type: mlflow_model
+  test:
+    type: uri_file
+  contact_cost:
+    type: number
+    default: 35.0
+  readmission_cost:
+    type: number
+    default: 4800.0
+  effectiveness:
+    type: number
+    default: 0.25
+  contact_share:
+    type: number
+    default: 0.02
+outputs:
+  metrics:
+    type: uri_file
+code: ../..
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
+  conda_file: ./conda.yml
+command: >-
+  python -m src.components.evaluate --model ${{inputs.model}} --test ${{inputs.test}}
+  --contact-cost ${{inputs.contact_cost}} --readmission-cost ${{inputs.readmission_cost}}
+  --effectiveness ${{inputs.effectiveness}} --contact-share ${{inputs.contact_share}}
+  --metrics ${{outputs.metrics}}

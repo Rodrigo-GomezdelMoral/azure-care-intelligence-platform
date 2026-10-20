@@ -1,0 +1,49 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: train
+display_name: Train readmission model
+version: 1
+description: Fits one scikit-learn pipeline with imputation and encoding inside, and logs validation metrics, the business metric included, under the names the sweep optimises.
+inputs:
+  train:
+    type: uri_file
+  validation:
+    type: uri_file
+  family:
+    type: string
+    default: gradient_boosting
+    enum: [gradient_boosting, logistic_regression]
+  learning_rate:
+    type: number
+    default: 0.05
+  max_iter:
+    type: integer
+    default: 300
+  max_leaf_nodes:
+    type: integer
+    default: 31
+  min_samples_leaf:
+    type: integer
+    default: 20
+  l2_regularization:
+    type: number
+    default: 0.0
+  contact_share:
+    type: number
+    default: 0.02
+  seed:
+    type: integer
+    default: 7
+outputs:
+  model:
+    type: mlflow_model
+code: ../..
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
+  conda_file: ./conda.yml
+command: >-
+  python -m src.components.train --train ${{inputs.train}} --validation ${{inputs.validation}}
+  --family ${{inputs.family}} --learning-rate ${{inputs.learning_rate}} --max-iter ${{inputs.max_iter}}
+  --max-leaf-nodes ${{inputs.max_leaf_nodes}} --min-samples-leaf ${{inputs.min_samples_leaf}}
+  --l2-regularization ${{inputs.l2_regularization}} --contact-share ${{inputs.contact_share}}
+  --seed ${{inputs.seed}} --model ${{outputs.model}}

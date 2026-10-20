@@ -1,0 +1,23 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: register
+display_name: Register model
+version: 1
+description: Registers the evaluated model with its metrics and data asset as version tags, and marks it champion or challenger with the stage tag.
+inputs:
+  model:
+    type: mlflow_model
+  metrics:
+    type: uri_file
+  model_name:
+    type: string
+    default: readmission-risk
+  data_asset:
+    type: string
+code: ../..
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
+  conda_file: ./conda.yml
+command: >-
+  python -m src.components.register --model ${{inputs.model}} --metrics ${{inputs.metrics}}
+  --model-name ${{inputs.model_name}} --data-asset ${{inputs.data_asset}}

@@ -44,8 +44,8 @@ module workspace 'modules/workspace.bicep' = {
   params: {
     location: location, tags: tags, suffix: suffix, logAnalyticsWorkspaceId: landingZone.logAnalyticsWorkspaceId
     registryId: resourceId(landingZone.sharedResourceGroupName, 'Microsoft.ContainerRegistry/registries', landingZone.registryName)
-    amlPrincipalId: identities[0].properties.principalId, apiPrincipalId: identities[1].properties.principalId
-    cicdPrincipalId: cicdPrincipalId, operatorObjectId: entraAdminObjectId
+    amlIdentityId: identities[0].id, amlPrincipalId: identities[0].properties.principalId
+    apiPrincipalId: identities[1].properties.principalId, cicdPrincipalId: cicdPrincipalId, operatorObjectId: entraAdminObjectId
   }
 }
 
@@ -61,7 +61,8 @@ module sharedAccess 'modules/shared-access.bicep' = {
   name: 'shared-access'
   scope: resourceGroup(landingZone.sharedResourceGroupName)
   params: {
-    registryName: landingZone.registryName, pullPrincipalIds: [identities[0].properties.principalId, identities[1].properties.principalId]
+    registryName: landingZone.registryName
+    pullPrincipalIds: [identities[0].properties.principalId, identities[1].properties.principalId, workspace.outputs.workspacePrincipalId]
   }
 }
 
@@ -95,4 +96,5 @@ output postgresHost string = data.outputs.postgresHost
 output apiUrl string = apps.outputs.apiUrl
 @description('Principal ids of the pipeline and API identities, for the PostgreSQL role script.')
 output amlPrincipalId string = identities[0].properties.principalId
+output amlIdentityClientId string = identities[0].properties.clientId
 output apiPrincipalId string = identities[1].properties.principalId

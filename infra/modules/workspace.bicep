@@ -3,6 +3,7 @@ param tags object
 param suffix string
 param logAnalyticsWorkspaceId string
 param registryId string
+param amlIdentityId string
 param amlPrincipalId string
 param apiPrincipalId string
 param cicdPrincipalId string
@@ -48,7 +49,7 @@ resource workspace 'Microsoft.MachineLearningServices/workspaces@2026-05-01' = {
   name: 'mlw-${suffix}'
   location: location
   tags: tags
-  identity: { type: 'SystemAssigned' }
+  identity: { type: 'SystemAssigned,UserAssigned', userAssignedIdentities: { '${amlIdentityId}': {} } }
   properties: {
     friendlyName: 'Patient Risk & Adherence Intelligence', storageAccount: storage.id, keyVault: vault.id, applicationInsights: insights.id, containerRegistry: registryId
     publicNetworkAccess: 'Enabled', systemDatastoresAuthMode: 'identity', hbiWorkspace: false, v1LegacyMode: false
