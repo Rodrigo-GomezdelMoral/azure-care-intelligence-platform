@@ -1,0 +1,16 @@
+.azure/
+*.parameters.json
+.env
+.DS_Store
+.claude/
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+mlruns/
+outputs/
+data/*.parquet
+data/*.csv

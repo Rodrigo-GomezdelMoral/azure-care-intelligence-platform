@@ -1,0 +1,29 @@
+title = "azure-care-intelligence-platform"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "email-address"
+description = "An email address; the repository commits none"
+regex = '''[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'''
+[rules.allowlist]
+regexes = ['''@example\.(com|invalid)''', '''users\.noreply\.github\.com''']
+
+[[rules]]
+id = "guid"
+description = "A GUID; only the all-zero placeholder and the built-in role definition ids used by the templates are allowed"
+regex = '''[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'''
+[rules.allowlist]
+regexes = [
+  '''00000000-0000-0000-0000-00000000000[0-9]''',
+  '''ba92f5b4-2d11-453d-a403-e96b0029c9fe''',
+  '''2a2b9908-6ea1-4ae2-8e65-a410df84e7d1''',
+  '''f6c7c914-8db3-469d-8ca1-694a8f32e121''',
+  '''7f951dda-4ed3-4680-a7ca-43fe172d538d''',
+  '''3913510d-42f4-4e42-8a64-420c390055eb''',
+  '''4633458b-17de-408a-b874-0445c86b69e6''',
+  '''b86a8fe4-44ce-4948-aee5-eccb2c155cd7''',
+  '''acdd72a7-3385-48ef-bd42-f606fba81ae7''',
+  '''b24988ac-6180-42a0-ab88-20f7382dd24c''',
+]
