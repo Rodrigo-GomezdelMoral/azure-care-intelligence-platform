@@ -20,8 +20,8 @@ param operatorIp string
 param entraAdminObjectId string
 @description('User principal name of that administrator.')
 param entraAdminUpn string
-@description('owner/name of the GitHub repository whose workflows sign in as id-carecicd; empty skips the federation.')
-param githubRepository string = ''
+@description('OIDC subject prefix of the repository whose workflows sign in as id-carecicd, the sub_claim_prefix GitHub reports; empty skips the federation.')
+param githubSubjectPrefix string = ''
 @description('Compute size of the PostgreSQL server; Burstable B1ms unless the region has no capacity for it.')
 param postgresSku string = 'Standard_B1ms'
 @description('Region of the PostgreSQL server, which may differ from the group when the group region has no Burstable capacity.')
@@ -41,10 +41,10 @@ resource identities 'Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30
 }]
 
 @batchSize(1)
-resource federated 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = [for item in items(empty(githubRepository) ? {} : federation): {
+resource federated 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = [for item in items(empty(githubSubjectPrefix) ? {} : federation): {
   parent: identities[2]
   name: item.key
-  properties: { issuer: 'https://token.actions.githubusercontent.com', subject: 'repo:${githubRepository}:${item.value}', audiences: ['api://AzureADTokenExchange'] }
+  properties: { issuer: 'https://token.actions.githubusercontent.com', subject: '${githubSubjectPrefix}:${item.value}', audiences: ['api://AzureADTokenExchange'] }
 }]
 
 resource assignPipelineIdentity 'Microsoft.Authorization/roleAssignments@2022-04-01' = {

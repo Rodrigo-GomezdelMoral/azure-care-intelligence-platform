@@ -20,7 +20,8 @@ its ADR-002: no virtual network, every service accepts Entra tokens only (ADR-01
 | | | AcrPull | shared container registry |
 | operator | `make` targets from a workstation | Storage Blob Data Contributor; PostgreSQL Entra administrator | storage account, server |
 
-`id-carecicd` trusts exactly three GitHub subjects: `ref:refs/heads/main` for the merge, schedule
+`id-carecicd` trusts exactly three GitHub subjects, each under the repository's immutable subject
+prefix with its owner and repository ids: `ref:refs/heads/main` for the merge, schedule
 and dispatch workflows, `pull_request` for `train-dev.yml`, and `environment:production` for
 `deploy-prod.yml`. No workflow holds a secret beyond those identifiers.
 

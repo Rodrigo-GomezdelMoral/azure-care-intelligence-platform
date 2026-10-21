@@ -16,7 +16,7 @@ files = ["."]
 exclude = ["examples/"]
 
 [[tool.mypy.overrides]]
-module = ["sdv.*", "shap.*", "sklearn.*", "mlflow.*", "pgvector.*", "azureml.*", "evidently.*", "scipy.*"]
+module = ["sdv.*", "torch.*", "shap.*", "sklearn.*", "mlflow.*", "pgvector.*", "azureml.*", "evidently.*", "scipy.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

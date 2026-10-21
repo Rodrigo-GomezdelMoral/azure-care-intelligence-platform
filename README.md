@@ -73,7 +73,7 @@ make install install-synth          # runtime, tooling, and SDV + torch for the 
 make check                          # ruff, mypy, pytest with the budget
 make lz-env                         # landing zone outputs into the azd environment
 azd env set OPERATOR_IP <your public address>
-azd env set GITHUB_REPOSITORY <owner>/<repository>
+azd env set GITHUB_SUBJECT_PREFIX "$(gh api repos/<owner>/<repository>/actions/oidc/customization/sub --jq .sub_claim_prefix)"
 make deploy                         # infrastructure and API; on a machine without Docker,
                                     # az deployment group create -f infra/main.bicep -p infra/main.bicepparam
 make pg-roles PG_ADMIN=<your UPN>   # PostgreSQL roles, schema and grants, as the Entra admin
@@ -99,7 +99,11 @@ make api                            # the API locally, REQUIRE_AUTH=false
    `ref:refs/heads/main` for the merge, schedule and dispatch workflows, `pull_request` for
    `train-dev.yml`, and `environment:production` for `deploy-prod.yml`. A job that declares an
    environment presents `environment:<name>` as its subject rather than the branch, so without the
-   third credential the first production deployment fails with `AADSTS700213`.
+   third credential the first production deployment fails with `AADSTS700213`. Each subject starts
+   with the repository's prefix exactly as GitHub issues it, `GITHUB_SUBJECT_PREFIX` above: for a
+   repository with immutable subject claims it carries the owner and repository ids,
+   `repo:<owner>@<owner id>/<repository>@<repository id>`, and a credential written as
+   `repo:<owner>/<repository>` fails with the same `AADSTS700213`.
 
 ## Results
 
