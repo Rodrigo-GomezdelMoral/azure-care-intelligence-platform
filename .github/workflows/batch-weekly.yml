@@ -1,0 +1,69 @@
+name: batch-weekly
+
+# Every Monday the batch endpoint scores the cohort with the champion, and the ranked call list,
+# capped at the programme's weekly capacity and never below break-even, replaces last week's in
+# PostgreSQL, where the care manager's API reads it.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_RESOURCE_GROUP: rg-careintel-prod-swc
+  AML_WORKSPACE: mlw-careintel-prod-swc
+  BATCH_ENDPOINT: bep-cohort-scoring
+  POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+  POSTGRES_DATABASE: care
+  POSTGRES_USER: id-carecicd
+  WEEKLY_CAPACITY: "200"
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the pinned dependencies
+        run: pip install -r requirements.txt
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Acquire every token the job needs while the OIDC assertion is fresh
+        run: |
+          for scope in https://storage.azure.com/.default https://ossrdbms-aad.database.windows.net/.default https://ml.azure.com/.default; do
+            az account get-access-token --scope "$scope" --only-show-errors > /dev/null
+          done
+
+      - name: Score the cohort, rank the call list and publish it
+        run: |
+          mkdir -p outputs
+          python -m pipelines.scoring --data-version 1 --out outputs | tee outputs/summary.txt
+
+      - name: Publish the expected cost avoided
+        if: always() && hashFiles('outputs/summary.txt') != ''
+        run: |
+          { echo "### Weekly call list"; echo; tail -n 1 outputs/summary.txt; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && hashFiles('outputs/call_list.csv') != ''
+        with:
+          name: call-list
+          path: outputs/call_list.csv
+          retention-days: 7

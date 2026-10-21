@@ -1,0 +1,87 @@
+name: drift-check
+
+# Every Monday, before the weekly batch, the latest cohort is compared with the cohort the champion
+# was trained on. Drift opens an issue, which is the alert, and starts the training pipeline on the
+# latest cohort; that pipeline ends at the registration gate. This workflow cannot promote.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+env:
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_RESOURCE_GROUP: rg-careintel-prod-swc
+  AML_WORKSPACE: mlw-careintel-prod-swc
+  AML_IDENTITY_CLIENT_ID: ${{ secrets.AML_IDENTITY_CLIENT_ID }}
+  MODEL_NAME: readmission-risk
+  PYTHONIOENCODING: utf-8
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the pinned dependencies
+        run: pip install -r requirements.txt
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download the champion's training cohort and the latest cohort
+        run: |
+          read -r account container < <(az ml datastore show -n workspaceblobstore -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query "[account_name, container_name]" -o tsv --only-show-errors)
+          reference=$(az ml model list -n "$MODEL_NAME" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query "[?tags.stage=='champion'].tags.data_asset | [0]" -o tsv --only-show-errors)
+          current=$(az ml data show -n "${reference%%:*}" --label latest -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query version -o tsv --only-show-errors)
+          fetch() {
+            path=$(az ml data show -n "${reference%%:*}" --version "$1" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+              --query path -o tsv --only-show-errors)
+            az storage blob download --auth-mode login --account-name "$account" --container-name "$container" \
+              --name "${path#*/paths/}" --file "$2" --only-show-errors > /dev/null
+          }
+          fetch "${reference##*:}" reference.parquet
+          fetch "$current" current.parquet
+          echo "CURRENT_VERSION=$current" >> "$GITHUB_ENV"
+
+      - name: Compare the cohorts and retrain on drift
+        run: |
+          python -m src.monitoring.drift --reference reference.parquet --current current.parquet \
+            --current-version "$CURRENT_VERSION" --retrain --report drift.json
+
+      - name: Open an issue when the cohort has drifted
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(jq -r .drift drift.json)" = "true" ]; then
+            {
+              echo "The latest cohort has drifted from the one the champion was trained on."
+              echo
+              echo "- Share of drifted features: $(jq -r .share drift.json), threshold $(jq -r .threshold drift.json)"
+              echo "- Drifted features: $(jq -r '.drifted | join(", ")' drift.json)"
+              echo "- Retraining run: $(jq -r '.retraining_run // "not started"' drift.json)"
+              echo
+              echo "The retraining run ends at the registration gate; promotion goes through deploy-prod. See docs/operations/runbook.md."
+            } > issue.md
+            gh issue create --title "Cohort drift in patient-cohort:$CURRENT_VERSION" --body-file issue.md
+          else
+            echo "No drift: $(jq -c . drift.json)"
+          fi

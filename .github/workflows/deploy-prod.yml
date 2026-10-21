@@ -1,0 +1,143 @@
+name: deploy-prod
+
+# Promotion is a human decision. The production environment requires a named reviewer, so nothing
+# below runs until someone approves this version. The new version goes to the idle colour with
+# 10 % of traffic, is smoke-checked directly, takes all traffic and only then becomes the champion
+# in the registry. Any failure before the promotion returns traffic to the colour that was serving.
+# Its OIDC subject is environment:production, the third federated credential of id-carecicd.
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_version:
+        description: Registered version of readmission-risk to promote
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_RESOURCE_GROUP: rg-careintel-prod-swc
+  AML_WORKSPACE: mlw-careintel-prod-swc
+  MODEL_NAME: readmission-risk
+  ONLINE_ENDPOINT: ep-readmission-risk
+  BATCH_ENDPOINT: bep-cohort-scoring
+  POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+  POSTGRES_DATABASE: care
+  POSTGRES_USER: id-carecicd
+  VERSION: ${{ inputs.model_version }}
+  PYTHONIOENCODING: utf-8
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the pinned dependencies
+        run: pip install -r requirements.txt
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Acquire every token the job needs while the OIDC assertion is fresh
+        run: |
+          for scope in https://storage.azure.com/.default https://ossrdbms-aad.database.windows.net/.default https://ml.azure.com/.default; do
+            az account get-access-token --scope "$scope" --only-show-errors > /dev/null
+          done
+
+      - name: Choose the idle colour
+        run: |
+          traffic=$(az ml online-endpoint show -n "$ONLINE_ENDPOINT" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query traffic -o json --only-show-errors 2>/dev/null || echo '{}')
+          if [ "$(echo "$traffic" | jq -r '.blue // 0')" -gt 0 ]; then live=blue; idle=green
+          elif [ "$(echo "$traffic" | jq -r '.green // 0')" -gt 0 ]; then live=green; idle=blue
+          else live=""; idle=blue; fi
+          echo "LIVE=$live" >> "$GITHUB_ENV"
+          echo "IDLE=$idle" >> "$GITHUB_ENV"
+
+      - name: Deploy the version to the idle colour with 10 % of traffic
+        run: |
+          share=10
+          if [ -z "$LIVE" ]; then share=100; fi
+          python -m ops.endpoints --online --deployment "$IDLE" --traffic "$share" --model-version "$VERSION"
+
+      - name: Smoke check the idle colour directly
+        run: |
+          python - <<'EOF'
+          import json
+          import numpy as np
+          from src.components.prep import contract, encode, validate
+          from src.data.synthesize import LABEL, seed_cohort
+          frame = encode(validate(seed_cohort(2, np.random.default_rng(1)), contract())).drop(columns=[LABEL])
+          json.dump({"patients": json.loads(frame.to_json(orient="records"))}, open("smoke.json", "w"))
+          EOF
+          az ml online-endpoint invoke -n "$ONLINE_ENDPOINT" --deployment-name "$IDLE" --request-file smoke.json \
+            -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" --only-show-errors > answer.json
+          python - <<'EOF'
+          import json
+          answer = json.load(open("answer.json"))
+          answer = json.loads(answer) if isinstance(answer, str) else answer
+          assert len(answer) == 2 and all(len(patient["drivers"]) == 3 for patient in answer), answer
+          print("smoke check passed")
+          EOF
+
+      - name: Shift all traffic to the new colour
+        run: |
+          traffic="$IDLE=100"
+          if [ -n "$LIVE" ]; then traffic="$IDLE=100 $LIVE=0"; fi
+          az ml online-endpoint update -n "$ONLINE_ENDPOINT" --traffic "$traffic" \
+            -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" --only-show-errors > /dev/null
+
+      - name: Promote the version to champion and retire the previous one
+        id: promote
+        run: |
+          previous=$(az ml model list -n "$MODEL_NAME" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query "[?tags.stage=='champion'].version" -o tsv --only-show-errors)
+          for version in $previous; do
+            if [ "$version" != "$VERSION" ]; then
+              az ml model update -n "$MODEL_NAME" --version "$version" --set tags.stage=retired \
+                -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" --only-show-errors > /dev/null
+            fi
+          done
+          az ml model update -n "$MODEL_NAME" --version "$VERSION" --set tags.stage=champion \
+            -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" --only-show-errors > /dev/null
+
+      - name: Return traffic to the colour that was serving
+        if: failure() && steps.promote.outcome != 'success' && env.LIVE != ''
+        run: |
+          az ml online-endpoint update -n "$ONLINE_ENDPOINT" --traffic "$LIVE=100 $IDLE=0" \
+            -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" --only-show-errors > /dev/null
+
+      - name: Point the weekly batch at the champion
+        run: python -m ops.endpoints --batch --model-version "$VERSION"
+
+      - name: Reload the cohort embeddings for the champion
+        run: |
+          read -r account container < <(az ml datastore show -n workspaceblobstore -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query "[account_name, container_name]" -o tsv --only-show-errors)
+          asset=$(az ml model show -n "$MODEL_NAME" --version "$VERSION" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query tags.data_asset -o tsv --only-show-errors)
+          path=$(az ml data show -n "${asset%%:*}" --version "${asset##*:}" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
+            --query path -o tsv --only-show-errors)
+          az storage blob download --auth-mode login --account-name "$account" --container-name "$container" \
+            --name "${path#*/paths/}" --file cohort.parquet --only-show-errors > /dev/null
+          model=$(python -c "import mlflow; from ops.data_asset import workspace; c = workspace(); mlflow.set_tracking_uri(c.workspaces.get(c.workspace_name).mlflow_tracking_uri); print(mlflow.artifacts.download_artifacts('models:/$MODEL_NAME/$VERSION'))")
+          python -m src.cohorts --cohort cohort.parquet --model "$model"

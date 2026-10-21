@@ -1,0 +1,26 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: prep
+display_name: Prepare cohort
+version: 1
+description: Validates the cohort against data/schema.json, encodes it and writes stratified train, validation and test splits; fails on schema drift.
+inputs:
+  cohort:
+    type: uri_file
+  seed:
+    type: integer
+    default: 7
+outputs:
+  train:
+    type: uri_file
+  validation:
+    type: uri_file
+  test:
+    type: uri_file
+code: ../..
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04
+  conda_file: ./conda.yml
+command: >-
+  python -m src.components.prep --cohort ${{inputs.cohort}} --seed ${{inputs.seed}}
+  --train ${{outputs.train}} --validation ${{outputs.validation}} --test ${{outputs.test}}
