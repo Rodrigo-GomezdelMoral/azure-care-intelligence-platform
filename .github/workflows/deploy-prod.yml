@@ -132,7 +132,7 @@ jobs:
       - name: Reload the cohort embeddings for the champion
         run: |
           read -r account container < <(az ml datastore show -n workspaceblobstore -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
-            --query "[account_name, container_name]" -o tsv --only-show-errors)
+            --query "join(' ', [account_name, container_name])" -o tsv --only-show-errors)
           asset=$(az ml model show -n "$MODEL_NAME" --version "$VERSION" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
             --query tags.data_asset -o tsv --only-show-errors)
           path=$(az ml data show -n "${asset%%:*}" --version "${asset##*:}" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \

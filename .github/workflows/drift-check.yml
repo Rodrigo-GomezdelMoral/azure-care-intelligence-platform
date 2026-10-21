@@ -47,7 +47,7 @@ jobs:
       - name: Download the champion's training cohort and the latest cohort
         run: |
           read -r account container < <(az ml datastore show -n workspaceblobstore -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
-            --query "[account_name, container_name]" -o tsv --only-show-errors)
+            --query "join(' ', [account_name, container_name])" -o tsv --only-show-errors)
           reference=$(az ml model list -n "$MODEL_NAME" -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
             --query "[?tags.stage=='champion'].tags.data_asset | [0]" -o tsv --only-show-errors)
           current=$(az ml data show -n "${reference%%:*}" --label latest -g "$AZURE_RESOURCE_GROUP" -w "$AML_WORKSPACE" \
