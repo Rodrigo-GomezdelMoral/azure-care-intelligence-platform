@@ -1,11 +1,9 @@
 """Validates a cohort extract against the schema, encodes it and splits it; fails loudly on drift.
 
-`data/schema.json` is the contract between the data producer and the model: the column set, each
-column's type and its role. A column that disappears, changes type or arrives mostly empty is
-reported as drift and stops the pipeline here, before anything is trained on it. Imputation and
-categorical encoding are fitted on the training split, so they live inside the model (`train`)
-rather than here; this component guarantees the contract they rely on and writes stratified
-train, validation and test splits so that every later component reads exactly one file.
+`data/schema.json` is the contract with the data producer: a column that disappears, changes type
+or arrives mostly empty stops the pipeline here, before anything is trained on it. Imputation and
+encoding are fitted on the training split, so they live inside the model (`train`); this component
+guarantees their contract and writes the stratified train, validation and test splits.
 """
 
 import argparse

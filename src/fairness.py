@@ -1,13 +1,9 @@
 """Subgroup audit of the ranking at its operating point: who gets contacted, and who is missed.
 
-A score that ranks well on average can still reach one group less often than its need warrants,
-so the audit looks at the contacted set the programme acts on, not at the probabilities. For
-every subgroup of each protected attribute it reports the patients and their readmission rate,
-the share contacted (selection rate), the share of its readmitted patients contacted (recall,
-the equal-opportunity measure), the precision among its contacts (predictive parity) and the
-group's own AUC. The disparity of a measure is the ratio of its lowest to its highest group
-value, so 1.0 is parity; the model card quotes the worst one and experiment 003 what closing it
-costs. The disparities this finds on synthetic data are the ones the generator induces (ADR-008).
+The audit looks at the contacted set the programme acts on, not at the probabilities. Per subgroup
+it reports patients, readmission rate, selection rate, recall (equal opportunity), precision among
+contacts (predictive parity) and AUC; the disparity of a measure is its lowest over its highest
+group value, so 1.0 is parity. On synthetic data the disparities are the generator's (ADR-008).
 """
 
 from collections.abc import Callable

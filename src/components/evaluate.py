@@ -1,11 +1,9 @@
 """Reports what the model is worth on the held-out test split: discrimination, calibration, euros.
 
-Discrimination (AUC, average precision) says whether the ranking is right. Calibration (Brier
-score, expected calibration error and the reliability table behind it) says whether the
-probabilities can be trusted when the expected value of a contact is computed from them. The
-business metric says what the ranking is worth under the programme's capacity, and is the number
-the registration gate compares (ADR-003). The fairness audit looks at the same contacted set by
-subgroup. Everything is logged to MLflow and written to `metrics.json`.
+Discrimination says whether the ranking is right; calibration whether the probabilities behind each
+contact's expected value can be trusted; the business metric what the ranking is worth under the
+programme's capacity, the number the registration gate compares (ADR-003); the fairness audit whom
+the contacted set reaches. Everything is logged to MLflow and written to `metrics.json`.
 """
 
 import argparse

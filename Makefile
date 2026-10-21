@@ -43,7 +43,7 @@ batch:
 	$(PYTHON) -m pipelines.scoring
 
 drift:
-	$(PYTHON) -m src.monitoring.drift
+	$(PYTHON) -m src.monitoring.drift --reference data/cohort.parquet --current $(CURRENT) --current-version $(VERSION)
 
 api:
 	uvicorn api.main:app --reload --port 8000

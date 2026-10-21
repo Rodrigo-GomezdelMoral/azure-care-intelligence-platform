@@ -1,13 +1,10 @@
 """Registers the evaluated model only if it beats the champion on the business metric (ADR-003).
 
-A registered version carries the metrics it earned on the test split and the data asset it was
-trained on as tags, so the comparison is read from the registry, not from a run. The first
-version becomes the champion; a later one is registered as a challenger only when its cost
-avoided per thousand contacts exceeds the champion's by the required margin, and is refused
-otherwise, with the comparison logged and written for the workflow to publish. Ties lose, since
-a model that is not better has not earned a registration. Promoting a challenger to champion
-stays a human decision taken in the deployment workflow. The role is the version tag `stage`,
-because the workspace registry accepts neither MLflow aliases nor the deprecated stages API.
+A version carries its test metrics and data asset as tags. The first becomes the champion; a later
+one becomes a challenger only if its cost avoided per thousand contacts beats the champion's by the
+margin, and ties lose. A refusal is logged and written for the workflow to publish. Promotion stays
+a human decision in the deployment workflow, recorded in the version tag `stage`, because the
+workspace registry accepts neither MLflow aliases nor the deprecated stages API.
 """
 
 import argparse

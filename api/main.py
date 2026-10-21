@@ -1,11 +1,9 @@
 """The care manager's API: this week's call list and the precedent for one patient.
 
-Two reads, nothing else: the ranked call list the batch run published, and the forty most similar
-patients with what worked for them. Every request carries an Entra token with the `Care.Read`
-app role, validated here against the tenant's signing keys; the container ingress already
-authenticates, and this check is what makes the role meaningful. Local runs set
-`REQUIRE_AUTH=false`. PostgreSQL is reached with the API identity's own token; the API can read
-and nothing more (ADR-006).
+Two reads, nothing else. Every request carries an Entra token with the `Care.Read` app role,
+validated here against the tenant's signing keys: the ingress authenticates, and this check makes
+the role meaningful. Local runs set `REQUIRE_AUTH=false`. PostgreSQL is read with the API
+identity's own token, and the API can do nothing else (ADR-006).
 """
 
 from typing import Annotated, Any

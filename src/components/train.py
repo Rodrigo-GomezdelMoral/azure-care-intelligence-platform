@@ -1,11 +1,9 @@
 """Trains the readmission-risk model as one scikit-learn pipeline whose preprocessing travels with it.
 
-The model is a `Pipeline`: a `ColumnTransformer` that imputes and one-hot-encodes the nominal
-columns and imputes the numeric ones, then a gradient-boosting classifier (the baseline; ADR-009
-rejects deep learning at this size) or a logistic regression (experiment 001). Every
-hyperparameter is a command-line option, so this component is also the trial of the sweep, and
-the validation metrics it logs, the business metric among them, carry the names the sweep
-optimises. The fitted pipeline is written as an MLflow model, the format every endpoint consumes.
+A `ColumnTransformer` imputes and one-hot-encodes, then gradient boosting (ADR-009) or a logistic
+regression (experiment 001) classifies. Every hyperparameter is a command-line option, so this is
+also the sweep's trial, and the validation metrics it logs carry the names the sweep optimises.
+The fitted pipeline is saved as an MLflow model, the format every endpoint consumes.
 """
 
 import argparse
