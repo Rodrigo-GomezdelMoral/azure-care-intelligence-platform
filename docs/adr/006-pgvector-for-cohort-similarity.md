@@ -46,6 +46,10 @@ identity has `SELECT` and nothing else, and both connect with an Entra token as 
   defaults and were not tuned, because the recall at this size is not the problem.
 - On synthetic data the precedent is only as real as the generator; the model card says so.
 
+## Revisit when
+
+The cohort grows past a few million patients, where the HNSW parameters and partitioning need tuning, or care managers ask for clinical similarity that the risk drivers do not capture.
+
 ## Rejected
 
 - **Azure AI Search vector index.** It exists in the landing zone, but it would add a second

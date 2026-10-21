@@ -65,3 +65,11 @@ def test_a_contact_pays_for_itself_above_a_few_percent_and_any_policy_is_priced_
     priced = policies(outcomes, scores, economics)
     assert set(priced) == {"capacity", "break_even", "f1_optimal"} and priced["capacity"] == by_capacity
     assert priced["f1_optimal"]["contacts"] == 2, "the F1 optimum on a perfect ranking is the two positives"
+
+
+def test_the_programme_parameters_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CONTACT_COST_EUR", "50")
+    assert (
+        Economics.from_env() == Economics(contact_cost=50.0)
+        and Economics.from_env().break_even > Economics().break_even
+    )

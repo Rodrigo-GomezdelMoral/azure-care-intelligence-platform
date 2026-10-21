@@ -39,6 +39,19 @@ reliability table), because the expected value of a contact is only honest if th
 is. The ranking decides who is called; the calibrated probability decides what to tell the
 director it is worth.
 
+### The difference, measured
+
+On the champion's test split, 6,000 patients of whom 1,133 were readmitted (experiment 002):
+
+| Policy | Contacts | Precision | Cost avoided per thousand contacts |
+|---|---|---|---|
+| Capacity, top 2 % | 120 | 0.758 | 875,000 € |
+| F1-optimal threshold, 0.216 | 1,863 | 0.382 | 423,000 € |
+| Break-even, 0.029 | 6,000 | 0.189 | 192,000 € |
+
+The F1 optimum asks for fifteen times the calls the programme can make, at less than half the
+value per call.
+
 ## Consequences
 
 - The headline number is in euros per thousand contacts, which a buyer can multiply by their
@@ -49,6 +62,10 @@ director it is worth.
 - `tests/test_evaluation.py` fixes the break-even arithmetic and shows, on a toy ranking, that
   the break-even policy alone contacts almost everybody while the capacity policy keeps the
   contacts that pay most.
+
+## Revisit when
+
+The programme's parameters change: a measured intervention effectiveness from a trial, different contact costs, or an elastic capacity. Experiment 002 is rerun with the new values before anything else changes.
 
 ## Rejected
 

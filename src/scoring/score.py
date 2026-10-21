@@ -1,13 +1,10 @@
 """Scores patients and explains every score with SHAP contributions translated into plain language.
 
-The online endpoint receives patients as JSON and answers with the readmission probability, the
-expected value of a contact and the three features that moved the score most, each phrased by a
-fixed template keyed by feature (ADR-012): the same patient always gets the same words. The
-batch endpoint hands the same module a list of parquet files and gets one row per patient back.
-Contributions are SHAP values of the boosting step in log-odds, computed on the pipeline's own
-preprocessed features and summed back to the raw columns. The module imports nothing from the
-repository, so the deployment snapshot is this folder; euro parameters arrive as environment
-variables with the defaults of `.env.example`.
+Online, patients arrive as JSON and each answer carries the probability and the three strongest
+SHAP drivers in log-odds, summed back to raw columns and phrased by fixed templates keyed by
+feature (ADR-012), so the same patient always gets the same words. In batch, a mini-batch of
+parquet files becomes one score per patient; the call list prices them with `src/economics.py`.
+The module imports nothing from the repository, so its deployment snapshot is this folder alone.
 """
 
 import json
@@ -21,9 +18,6 @@ import pandas as pd
 import shap
 
 IDENTIFIER, TOP = "person_id", 3
-CONTACT_COST = float(os.environ.get("CONTACT_COST_EUR", 35))
-READMISSION_COST = float(os.environ.get("READMISSION_COST_EUR", 4800))
-EFFECTIVENESS = float(os.environ.get("INTERVENTION_EFFECTIVENESS", 0.25))
 TEMPLATES = {
     "pdc_180d": "took their medication on {value:.0%} of days over the last six months",
     "pdc_90d": "took their medication on {value:.0%} of days over the last three months",
@@ -54,11 +48,6 @@ def phrase(feature: str, value: float) -> str:
     return f"has {name} of {value:g}"
 
 
-def expected_value(scores: Any) -> Any:
-    """Net euros expected from contacting a patient with this readmission probability (ADR-005)."""
-    return np.asarray(scores, dtype=float) * EFFECTIVENESS * READMISSION_COST - CONTACT_COST
-
-
 def driver(feature: str, value: Any, contribution: float) -> dict[str, Any]:
     text = f"{phrase(feature, float(value))}, which {'raises' if contribution > 0 else 'lowers'} the risk"
     return {"feature": feature, "contribution": round(contribution, 4), "text": text}
@@ -85,26 +74,22 @@ class Scorer:
         return pd.DataFrame(np.asarray(values), columns=raw, index=frame.index).T.groupby(level=0).sum().T
 
     def explain(self, frame: pd.DataFrame) -> list[dict[str, Any]]:
-        """Score, expected value of a contact and the three strongest drivers, phrased, per patient."""
+        """Score and the three strongest drivers, phrased, per patient."""
         scores, shaps = self.scores(frame), self.contributions(frame)
-        values, matrix, names, answers = expected_value(scores), shaps.to_numpy(dtype=float), list(shaps.columns), []
+        matrix, names, answers = shaps.to_numpy(dtype=float), list(shaps.columns), []
         ids = frame[IDENTIFIER].tolist() if IDENTIFIER in frame else [None] * len(frame)
         for position, (_, row) in enumerate(frame.iterrows()):
             order = np.argsort(-np.abs(matrix[position]))[:TOP]
             answer = {IDENTIFIER: ids[position], "score": round(float(scores[position]), 4)}
-            answer |= {"expected_value_eur": round(float(values[position]), 2)}
             answers.append(
                 answer | {"drivers": [driver(names[i], row[names[i]], float(matrix[position][i])) for i in order]}
             )
         return answers
 
     def batch(self, files: list[str]) -> pd.DataFrame:
-        """One row per patient across the files of a mini-batch: identifier, score and expected value."""
+        """One row per patient across the files of a mini-batch: identifier and score."""
         frame = pd.concat([pd.read_parquet(file) for file in files], ignore_index=True)
-        scores = self.scores(frame)
-        return pd.DataFrame(
-            {IDENTIFIER: frame[IDENTIFIER], "score": scores, "expected_value_eur": expected_value(scores)}
-        )
+        return pd.DataFrame({IDENTIFIER: frame[IDENTIFIER], "score": self.scores(frame)})
 
 
 SCORER: Scorer

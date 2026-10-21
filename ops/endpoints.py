@@ -1,10 +1,8 @@
 """Creates or updates the serving endpoints: one online (blue/green), one batch, both Entra-only.
 
-The online endpoint answers one patient at a time with an explanation; the batch endpoint scores
-the whole cohort for the weekly list. Both run the same scoring module from the same registered
-model version with the pipeline identity `id-careaml`, so images, models and data are reached
-without a key. Traffic between blue and green is a parameter: the deployment workflow shifts 10 %
-and then 100 % after its smoke check (ADR-004). The batch deployment runs on the scale-to-zero
+Both run the same scoring module and model version with the pipeline identity `id-careaml`, so
+images, models and data are reached without a key. Online traffic is a parameter the deployment
+workflow shifts 10 % then 100 % after its smoke check (ADR-004); batch runs on the scale-to-zero
 cluster, the one compute this repository keeps (ADR-002).
 """
 
@@ -20,7 +18,7 @@ from ops.data_asset import workspace
 from src.components.register import CHAMPION, STAGE
 
 CODE = ml.CodeConfiguration(code="src/scoring", scoring_script="score.py")
-IMAGE, INSTANCE, CLUSTER = "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04", "Standard_DS2_v2", "cpu-cluster"
+IMAGE, INSTANCE, CLUSTER = "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04", "Standard_DS1_v2", "cpu-cluster"
 BATCH_SETTINGS: dict[str, Any] = {"compute": CLUSTER, "instance_count": 1, "max_concurrency_per_instance": 1}
 BATCH_SETTINGS |= {"mini_batch_size": 1, "output_action": "append_row", "output_file_name": "predictions.csv"}
 BATCH_SETTINGS |= {"retry_settings": ml.BatchRetrySettings(max_retries=1, timeout=900)}
@@ -33,14 +31,14 @@ def champion_version(client: MLClient, name: str) -> str:
 
 
 def online(client: MLClient, shared: dict[str, Any], identity: str, name: str, traffic: int) -> str:
-    """Endpoint with the pipeline identity, one more deployment (a failed one is recreated) and its traffic share."""
+    """The endpoint if missing, one more deployment (a failed one is recreated) and its traffic share."""
     endpoint_name = os.environ["ONLINE_ENDPOINT"]
     owner = ml.IdentityConfiguration(
         type="user_assigned", user_assigned_identities=[ml.ManagedIdentityConfiguration(resource_id=identity)]
     )
-    client.online_endpoints.begin_create_or_update(
-        ml.ManagedOnlineEndpoint(name=endpoint_name, auth_mode="aad_token", identity=owner)
-    ).result()
+    if endpoint_name not in {endpoint.name for endpoint in client.online_endpoints.list()}:
+        endpoint = ml.ManagedOnlineEndpoint(name=endpoint_name, auth_mode="aad_token", identity=owner)
+        client.online_endpoints.begin_create_or_update(endpoint).result()
     states = {d.name: d.provisioning_state for d in client.online_deployments.list(endpoint_name)}
     if states.get(name) == "Failed":
         client.online_deployments.begin_delete(name=name, endpoint_name=endpoint_name).result()

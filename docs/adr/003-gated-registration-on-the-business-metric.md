@@ -31,8 +31,8 @@ The `register` component reads the evaluation report of the test split and the r
    registration, and a pipeline rerun on the same data and parameters must not create a new
    version.
 4. A refusal is not a failure: the step completes, logs the comparison (`decision`, `champion`,
-   `challenger`, `champion_version`) to its run, and writes it to the `decision` output, which
-   the staging workflow publishes on the pull request. Red pipelines are for broken code; "no
+   `challenger`, `champion_version`) to its run and writes it to the `decision` output;
+   `train-dev.yml` comments it on the pull request and `train-staging.yml` on the run summary. Red pipelines are for broken code; "no
    better model today" is a result.
 
 The decision is a pure function, `decide(incumbent, challenger, min_improvement)`, and
@@ -56,6 +56,10 @@ and the registry still holds one version.
 - Fairness is reported, not gated, in this phase: the audit (`src/fairness.py`) is in the same
   evaluation report, and the model card quotes its worst disparity. Gating on it is a policy
   decision the programme owner takes, with experiment 003 as the evidence.
+
+## Revisit when
+
+The test split grows, or a bootstrap of it is computed, so that `min_improvement` can be set from the measured noise; or the programme owner decides to gate on a fairness measure as well (experiment 003).
 
 ## Rejected
 

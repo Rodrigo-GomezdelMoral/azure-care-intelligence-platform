@@ -1,11 +1,9 @@
 """Composes the four components into the training pipeline and submits it on serverless compute.
 
-Each run is reproducible from three things it records: the data asset version it read, the
-component versions it ran (the YAML specs, snapshotted with the code) and the parameter set in
-its inputs. Nothing exists between runs: no cluster, no node pool (ADR-002). `--sweep` replaces
-the training step by a Bayesian sweep over the gradient-boosting hyperparameters; its best trial
-feeds the same evaluation and the same gate. `--wait` streams the run, so a workflow fails when
-the pipeline does.
+A run records the data asset version, the component specs snapshotted with the code and the
+parameters, so it can be reproduced (ADR-002 for the compute). `--sweep` replaces training by a
+Bayesian sweep whose best trial feeds the same evaluation and gate; `--wait` streams the run so a
+workflow fails when the pipeline does, and `--report` writes the summary a workflow publishes.
 """
 
 import argparse
@@ -13,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+import mlflow
 from azure.ai.ml import Input, MLClient, load_component
 from azure.ai.ml.dsl import pipeline
 from azure.ai.ml.entities import JobResourceConfiguration, ManagedIdentityConfiguration, PipelineJob
@@ -109,6 +108,17 @@ def submit(client: MLClient, job: PipelineJob, identity: str, tags: dict[str, st
     return submitted
 
 
+def report(client: MLClient, name: str) -> str:
+    """Markdown for a public pull request or job summary: the run name, test metrics and gate decision, no ids."""
+    mlflow.set_tracking_uri(client.workspaces.get(client.workspace_name).mlflow_tracking_uri)
+    steps = {job.display_name: mlflow.get_run(job.name).data for job in client.jobs.list(parent_job_name=name)}
+    metrics, gate = steps["evaluate"].metrics, steps["register"].params
+    rows = [f"| {key} | {metrics[key]:,.3f} |" for key in (METRIC, "precision_at_capacity", "auc", "calibration_error")]
+    head = [f"Training run `{name}` in the workspace", "", "| Test metric | Value |", "|---|---|"]
+    verdict = f"Gate: **{gate.get('decision')}**, challenger {gate.get('challenger')} against {gate.get('champion')}"
+    return "\n".join([*head, *rows, "", verdict])
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-version", default="1")
@@ -117,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("--min-improvement", type=float, default=0.0)
     parser.add_argument("--sweep", action="store_true")
     parser.add_argument("--wait", action="store_true")
+    parser.add_argument("--report", type=Path)
     for name, default in DEFAULTS.items():
         parser.add_argument(f"--{name.replace('_', '-')}", type=type(default), default=default)
     args = parser.parse_args()
@@ -129,4 +140,8 @@ if __name__ == "__main__":
         params = {name: getattr(args, name) for name in DEFAULTS}
         job = training(cohort=cohort, data_asset=asset, family=args.family, **policy, **params)
     tags = {"data_asset": asset, "family": "sweep" if args.sweep else args.family}
-    submit(workspace(), job, os.environ["AML_IDENTITY_CLIENT_ID"], tags, args.wait)
+    client = workspace()
+    submitted = submit(client, job, os.environ["AML_IDENTITY_CLIENT_ID"], tags, args.wait)
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(report(client, str(submitted.name)), encoding="utf-8")

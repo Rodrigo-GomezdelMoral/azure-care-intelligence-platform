@@ -62,6 +62,10 @@ The repository therefore pins MLflow 2.22.5, and champion and challenger are the
   the default compute. Whether a component's command line matches its script is only proven by
   running it, which the dev workflow does on every push.
 
+## Revisit when
+
+A second team or a second model reuses these components: then they are registered as named versions in a shared registry, and the pipeline references them by version instead of by file.
+
 ## Rejected
 
 - **One script.** Fastest to write, impossible to test by stage, and the sweep and the drift

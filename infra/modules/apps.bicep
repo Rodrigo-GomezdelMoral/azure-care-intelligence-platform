@@ -8,7 +8,6 @@ param apiImage string
 param apiAppClientId string
 param budgetStartDate string
 param workspaceId string
-param insightsConnectionString string
 param apiIdentity object
 param appSettings object
 
@@ -16,7 +15,7 @@ var issuer = '${environment().authentication.loginEndpoint}${tenant().tenantId}/
 var audience = 'api://${apiAppClientId}'
 var env = concat(
   map(items(appSettings), item => { name: item.key, value: item.value }),
-  [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: insightsConnectionString }, { name: 'AZURE_CLIENT_ID', value: apiIdentity.clientId }]
+  [{ name: 'AZURE_CLIENT_ID', value: apiIdentity.clientId }]
 )
 
 resource containerEnvironment 'Microsoft.App/managedEnvironments@2026-07-01' = {

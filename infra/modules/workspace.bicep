@@ -5,14 +5,13 @@ param logAnalyticsWorkspaceId string
 param registryId string
 param amlIdentityId string
 param amlPrincipalId string
-param apiPrincipalId string
 param cicdPrincipalId string
 param operatorObjectId string
 
 var dataScientist = 'f6c7c914-8db3-469d-8ca1-694a8f32e121'
 var storageBlobDataContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var diagnostics = { workspaceId: logAnalyticsWorkspaceId, logs: [{ categoryGroup: 'allLogs', enabled: true }] }
-var workspaceGrants = [{ principalId: amlPrincipalId, type: 'ServicePrincipal' }, { principalId: apiPrincipalId, type: 'ServicePrincipal' }]
+var workspaceGrants = [{ principalId: amlPrincipalId, type: 'ServicePrincipal' }, { principalId: cicdPrincipalId, type: 'ServicePrincipal' }]
 // The workspace grants its own system identity Storage Blob Data Contributor, Key Vault Administrator and Azure AI Administrator on the registry at creation; declaring them again fails with RoleAssignmentExists.
 var storageGrants = [
   { principalId: amlPrincipalId, type: 'ServicePrincipal', role: storageBlobDataContributor }, { principalId: cicdPrincipalId, type: 'ServicePrincipal', role: storageBlobDataContributor }
@@ -104,5 +103,3 @@ output workspacePrincipalId string = workspace.identity.principalId
 output mlflowTrackingUri string = workspace.properties.mlFlowTrackingUri
 @description('Storage account behind the default datastores.')
 output storageAccountName string = storage.name
-@description('Connection string of the Application Insights component the API and the endpoints report to.')
-output insightsConnectionString string = insights.properties.ConnectionString

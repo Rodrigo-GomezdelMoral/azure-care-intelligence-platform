@@ -1,15 +1,14 @@
 """The business metric: cost avoided per thousand patients contacted, under a capacity constraint.
 
-A contact costs tens of euros, a readmission costs thousands, and a contact prevents a fraction
-of the readmissions it reaches, so contacting a patient has positive expected value above a
-probability of only a few percent (ADR-005). The binding constraint is the programme's capacity,
-and the question a medical director asks (which patients do I call, and what does it save) is a
-ranking question, not a classification threshold. Every policy in this repository is priced the
-same way: a rule says who is contacted, and `cost_avoided` says what that set of contacts is
-worth; `register` gates on that number (ADR-003).
+A contact costs tens of euros and a readmission thousands, so a contact pays for itself above a
+probability of a few percent (ADR-005); the binding constraint is the programme's capacity, which
+makes the question a ranking one. Every policy is priced the same way: a rule says who is
+contacted, `cost_avoided` says what that is worth, and `register` gates on it (ADR-003). The euro
+parameters are modelling assumptions, read from the environment with the defaults of `.env.example`.
 """
 
 import argparse
+import os
 from dataclasses import asdict, dataclass
 from typing import Any, Self
 
@@ -17,6 +16,8 @@ import numpy as np
 from sklearn.metrics import precision_recall_curve
 
 METRIC = "cost_avoided_per_thousand"
+VARIABLES = {"contact_cost": "CONTACT_COST_EUR", "readmission_cost": "READMISSION_COST_EUR"}
+VARIABLES |= {"effectiveness": "INTERVENTION_EFFECTIVENESS"}
 Array = np.ndarray[Any, Any]
 
 
@@ -32,6 +33,12 @@ class Economics:
     @classmethod
     def from_args(cls, args: argparse.Namespace) -> Self:
         return cls(**{name: getattr(args, name) for name in asdict(cls())})
+
+    @classmethod
+    def from_env(cls) -> Self:
+        return cls(
+            **{name: float(os.environ.get(variable, getattr(cls(), name))) for name, variable in VARIABLES.items()}
+        )
 
     @property
     def break_even(self) -> float:

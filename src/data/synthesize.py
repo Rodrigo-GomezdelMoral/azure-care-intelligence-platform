@@ -144,11 +144,13 @@ def synthesize(seed: pd.DataFrame, rows: int, epochs: int, rng: np.random.Genera
     from sdv.single_table import CTGANSynthesizer
 
     torch.manual_seed(SEED)
+    torch.set_num_threads(1)
+    np.random.seed(SEED)
     exogenous = seed.loc[:, [*MARGINALS, "age", "deprivation_index"]]
     metadata = Metadata.detect_from_dataframes({"patients": exogenous})
     synthesizer = CTGANSynthesizer(metadata, epochs=epochs, verbose=False)
     synthesizer.fit({"patients": exogenous})
-    sampled = synthesizer.sample_from_conditions(sampling_conditions(rows), max_tries_per_batch=500)
+    sampled = synthesizer.sample_from_conditions(sampling_conditions(rows), max_tries_per_batch=500)["patients"]
     frame = sampled.reset_index(drop=True).astype(exogenous.dtypes.to_dict())
     frame.insert(0, "person_id", np.arange(1, len(frame) + 1))
     for stage in ENDOGENOUS:

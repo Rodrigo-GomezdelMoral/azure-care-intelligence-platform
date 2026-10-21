@@ -19,9 +19,7 @@ from ops.data_asset import ASSET, workspace
 from src import cohorts
 from src.economics import Economics
 
-COLUMNS = ["person_id", "score", "expected_value_eur"]
-LIST = "call_list (rank int, person_id bigint, score real, expected_value_eur real,"
-LIST += " generated_at timestamptz DEFAULT now())"
+COLUMNS = ["person_id", "score"]
 INSERT = "INSERT INTO call_list (rank, person_id, score, expected_value_eur) VALUES (%s, %s, %s, %s)"
 
 
@@ -35,16 +33,17 @@ def score_cohort(client: MLClient, endpoint: str, data_asset: str, folder: Path)
 
 
 def call_list(scored: pd.DataFrame, economics: Economics, capacity: int) -> pd.DataFrame:
-    """Ranked by score, only contacts that pay for themselves, as many as the programme can make."""
-    ranked = scored.sort_values("score", ascending=False)
+    """Ranked by score, priced by the gate's economics, only contacts that pay, as many as the programme can make."""
+    ranked = scored.assign(expected_value_eur=economics.expected_value(scored["score"].to_numpy())).sort_values(
+        "score", ascending=False
+    )
     ranked = ranked[ranked["score"] > economics.break_even].head(capacity).reset_index(drop=True)
     ranked.insert(0, "rank", ranked.index + 1)
     return ranked
 
 
 def publish(conn: psycopg.Connection[Any], listed: pd.DataFrame) -> None:
-    conn.execute(f"CREATE TABLE IF NOT EXISTS {LIST}")
-    conn.execute(f'GRANT SELECT ON call_list TO "{cohorts.READER}"')
+    """Replaces this week's list; the table and its grants belong to `ops/pg_roles.py`."""
     conn.execute("DELETE FROM call_list")
     values = listed[["rank", "person_id", "score", "expected_value_eur"]].to_numpy().tolist()
     rows = [(int(rank), int(person), float(score), float(value)) for rank, person, score, value in values]
@@ -59,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("--out", type=Path, default=Path("outputs"))
     args = parser.parse_args()
     scored = score_cohort(workspace(), os.environ["BATCH_ENDPOINT"], f"{ASSET}:{args.data_version}", args.out)
-    listed = call_list(scored, Economics(), args.capacity)
+    listed = call_list(scored, Economics.from_env(), args.capacity)
     listed.to_csv(args.out / "call_list.csv", index=False)
     with cohorts.connect() as connection:
         publish(connection, listed)

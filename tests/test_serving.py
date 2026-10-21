@@ -3,6 +3,7 @@ from pathlib import Path
 import mlflow
 import numpy as np
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 from mlflow.models import infer_signature
 
@@ -41,33 +42,24 @@ def test_the_scorer_returns_a_score_with_three_phrased_drivers_and_scores_files(
     assert set(score.SCORER.contributions(cohort.head(3)).columns) == set(features), "one-hot columns are summed back"
     cohort.head(10).to_parquet(tmp_path / "part.parquet", index=False)
     rows = score.run([str(tmp_path / "part.parquet")])
-    assert list(rows.columns) == ["person_id", "score", "expected_value_eur"] and len(rows) == 10
+    assert list(rows.columns) == ["person_id", "score"] and len(rows) == 10
 
 
 def test_the_call_list_ranks_pays_and_stops_at_capacity() -> None:
-    scored = pd.DataFrame(
-        {"person_id": [1, 2, 3, 4], "score": [0.9, 0.01, 0.5, 0.7], "expected_value_eur": [1045.0, -23.0, 565.0, 805.0]}
-    )
+    scored = pd.DataFrame({"person_id": [1, 2, 3, 4], "score": [0.9, 0.01, 0.5, 0.7]})
     listed = call_list(scored, Economics(), capacity=2)
     assert listed["person_id"].tolist() == [1, 4] and listed["rank"].tolist() == [1, 2]
+    assert listed["expected_value_eur"].tolist() == pytest.approx([1045.0, 805.0]), "priced by src/economics.py"
     assert call_list(scored, Economics(), capacity=10)["person_id"].tolist() == [1, 4, 3], (
         "below break-even is never called"
     )
 
 
 def test_what_worked_compares_neighbours_with_and_without_care_manager_contact() -> None:
-    neighbours = pd.DataFrame(
-        {
-            "readmission_30d": [True, False, False, True],
-            "care_manager_contacts_12m": [0, 2, 1, 0],
-            "pdc_180d": [0.5, 0.9, 0.8, 0.4],
-            "has_caregiver": [False, True, True, False],
-        }
-    )
-    summary = what_worked(neighbours)
-    assert (
-        summary["readmission_rate_with_care_manager"] == 0.0 and summary["readmission_rate_without_care_manager"] == 1.0
-    )
+    columns = ["readmission_30d", "care_manager_contacts_12m", "pdc_180d", "has_caregiver"]
+    rows = [(True, 0, 0.5, False), (False, 2, 0.9, True), (False, 1, 0.8, True), (True, 0, 0.4, False)]
+    summary = what_worked(pd.DataFrame(rows, columns=columns))
+    assert summary["readmission_rate_with_care_manager"] == 0.0 == 1 - summary["readmission_rate_without_care_manager"]
     assert summary["neighbours"] == 4 and summary["share_with_caregiver"] == 0.5
 
 

@@ -1,0 +1,240 @@
+{
+  "metrics": {
+    "auc": 0.7561952889490636,
+    "average_precision": 0.4591472632903325,
+    "brier": 0.1291826699150219,
+    "calibration_error": 0.013942997244532658,
+    "patients": 6000.0,
+    "contacts": 120.0,
+    "precision_at_capacity": 0.7583333333333333,
+    "cost_avoided_per_thousand": 875000.0,
+    "disparity_sex_selection_rate": 0.9633295862573259,
+    "disparity_sex_recall": 0.8674101610904585,
+    "disparity_sex_precision": 0.8109006314390163,
+    "disparity_language_barrier_selection_rate": 0.9262739428984459,
+    "disparity_language_barrier_recall": 0.9823671497584542,
+    "disparity_language_barrier_precision": 0.9431818181818181,
+    "disparity_age_band_selection_rate": 0.013953900709219856,
+    "disparity_age_band_recall": 0.024641148325358853,
+    "disparity_age_band_precision": 0.6428571428571428,
+    "disparity_deprivation_selection_rate": 0.4931506849315068,
+    "disparity_deprivation_recall": 0.6191175639794361,
+    "disparity_deprivation_precision": 0.8779220779220779,
+    "disparity_insurance_selection_rate": 0.5538762446657184,
+    "disparity_insurance_recall": 0.4372153545868575,
+    "disparity_insurance_precision": 0.729064039408867
+  },
+  "calibration": [
+    {
+      "bin": 0.0,
+      "predicted": 0.04538934255029195,
+      "observed": 0.051666666666666666,
+      "patients": 600.0
+    },
+    {
+      "bin": 1.0,
+      "predicted": 0.0637481818184022,
+      "observed": 0.055,
+      "patients": 600.0
+    },
+    {
+      "bin": 2.0,
+      "predicted": 0.08018767296635392,
+      "observed": 0.06833333333333333,
+      "patients": 600.0
+    },
+    {
+      "bin": 3.0,
+      "predicted": 0.10388413973944836,
+      "observed": 0.11666666666666667,
+      "patients": 600.0
+    },
+    {
+      "bin": 4.0,
+      "predicted": 0.12976978765768726,
+      "observed": 0.10166666666666667,
+      "patients": 600.0
+    },
+    {
+      "bin": 5.0,
+      "predicted": 0.16058231350269786,
+      "observed": 0.17333333333333334,
+      "patients": 600.0
+    },
+    {
+      "bin": 6.0,
+      "predicted": 0.19825870435256543,
+      "observed": 0.16833333333333333,
+      "patients": 600.0
+    },
+    {
+      "bin": 7.0,
+      "predicted": 0.25503895895875717,
+      "observed": 0.25833333333333336,
+      "patients": 600.0
+    },
+    {
+      "bin": 8.0,
+      "predicted": 0.3487538753299007,
+      "observed": 0.33,
+      "patients": 600.0
+    },
+    {
+      "bin": 9.0,
+      "predicted": 0.5580601615950542,
+      "observed": 0.565,
+      "patients": 600.0
+    }
+  ],
+  "fairness": {
+    "sex": {
+      "groups": {
+        "female": {
+          "patients": 3106,
+          "readmission_rate": 0.19156471345782355,
+          "auc": 0.7587388599406311,
+          "selection_rate": 0.019639407598197038,
+          "recall": 0.08571428571428572,
+          "precision": 0.8360655737704918
+        },
+        "male": {
+          "patients": 2894,
+          "readmission_rate": 0.18590186592950933,
+          "auc": 0.7534945973580072,
+          "selection_rate": 0.02038700760193504,
+          "recall": 0.07434944237918216,
+          "precision": 0.6779661016949152
+        }
+      },
+      "disparity": {
+        "selection_rate": 0.9633295862573259,
+        "recall": 0.8674101610904585,
+        "precision": 0.8109006314390163
+      }
+    },
+    "language_barrier": {
+      "groups": {
+        "no": {
+          "patients": 5534,
+          "readmission_rate": 0.18702565955908926,
+          "auc": 0.757761842943091,
+          "selection_rate": 0.019877123238164075,
+          "recall": 0.08019323671497584,
+          "precision": 0.7545454545454545
+        },
+        "yes": {
+          "patients": 466,
+          "readmission_rate": 0.21030042918454936,
+          "auc": 0.7361357586512867,
+          "selection_rate": 0.02145922746781116,
+          "recall": 0.08163265306122448,
+          "precision": 0.8
+        }
+      },
+      "disparity": {
+        "selection_rate": 0.9262739428984459,
+        "recall": 0.9823671497584542,
+        "precision": 0.9431818181818181
+      }
+    },
+    "age_band": {
+      "groups": {
+        "65_to_74": {
+          "patients": 2170,
+          "readmission_rate": 0.15806451612903225,
+          "auc": 0.7289994111648882,
+          "selection_rate": 0.008294930875576038,
+          "recall": 0.04081632653061224,
+          "precision": 0.7777777777777778
+        },
+        "75_plus": {
+          "patients": 1574,
+          "readmission_rate": 0.32719186785260485,
+          "auc": 0.7367492688651136,
+          "selection_rate": 0.06353240152477764,
+          "recall": 0.14757281553398058,
+          "precision": 0.76
+        },
+        "under_65": {
+          "patients": 2256,
+          "readmission_rate": 0.12189716312056738,
+          "auc": 0.6981552016887707,
+          "selection_rate": 0.0008865248226950354,
+          "recall": 0.0036363636363636364,
+          "precision": 0.5
+        }
+      },
+      "disparity": {
+        "selection_rate": 0.013953900709219856,
+        "recall": 0.024641148325358853,
+        "precision": 0.6428571428571428
+      }
+    },
+    "deprivation": {
+      "groups": {
+        "high": {
+          "patients": 1242,
+          "readmission_rate": 0.22624798711755234,
+          "auc": 0.7630970852574238,
+          "selection_rate": 0.03140096618357488,
+          "recall": 0.1103202846975089,
+          "precision": 0.7948717948717948
+        },
+        "low": {
+          "patients": 1679,
+          "readmission_rate": 0.1673615247170935,
+          "auc": 0.7377379479581915,
+          "selection_rate": 0.015485407980941036,
+          "recall": 0.07473309608540925,
+          "precision": 0.8076923076923077
+        },
+        "medium": {
+          "patients": 3079,
+          "readmission_rate": 0.18544982137057486,
+          "auc": 0.7603849817187451,
+          "selection_rate": 0.017862942513803184,
+          "recall": 0.06830122591943957,
+          "precision": 0.7090909090909091
+        }
+      },
+      "disparity": {
+        "selection_rate": 0.4931506849315068,
+        "recall": 0.6191175639794361,
+        "precision": 0.8779220779220779
+      }
+    },
+    "insurance": {
+      "groups": {
+        "none": {
+          "patients": 592,
+          "readmission_rate": 0.17905405405405406,
+          "auc": 0.7205334265082693,
+          "selection_rate": 0.011824324324324325,
+          "recall": 0.03773584905660377,
+          "precision": 0.5714285714285714
+        },
+        "private": {
+          "patients": 1848,
+          "readmission_rate": 0.1920995670995671,
+          "auc": 0.7529532183051423,
+          "selection_rate": 0.02002164502164502,
+          "recall": 0.08169014084507042,
+          "precision": 0.7837837837837838
+        },
+        "public": {
+          "patients": 3560,
+          "readmission_rate": 0.18876404494382024,
+          "auc": 0.7641273722958712,
+          "selection_rate": 0.021348314606741574,
+          "recall": 0.08630952380952381,
+          "precision": 0.7631578947368421
+        }
+      },
+      "disparity": {
+        "selection_rate": 0.5538762446657184,
+        "recall": 0.4372153545868575,
+        "precision": 0.729064039408867
+      }
+    }
+  }
+}

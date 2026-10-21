@@ -1,11 +1,9 @@
 """Cohort similarity in PostgreSQL with pgvector: the forty most similar patients and what worked for them.
 
-A care manager trusts a precedent more than a probability. Each patient is embedded as the vector
-of SHAP contributions of their score, so "similar" means "at risk for the same reasons", and the
-neighbourhood is retrieved by cosine distance over an HNSW index (ADR-006). "What worked" is read
-from the neighbours' own records: how often they were readmitted, with and without care-manager
-contact. Connections use an Entra token as the password; the API identity reads, the pipeline
-identity writes.
+A care manager trusts a precedent more than a probability. A patient's embedding is the SHAP
+vector of their score, so "similar" means "at risk for the same reasons", searched by cosine
+distance over HNSW (ADR-006); "what worked" is the neighbours' readmission rate with and without
+care-manager contact. `ops/pg_roles.py` owns schema and grants; connections use Entra tokens.
 """
 
 import argparse
@@ -23,10 +21,8 @@ from src.economics import Array
 from src.scoring.score import Scorer
 
 SCOPE = "https://ossrdbms-aad.database.windows.net/.default"
-NEIGHBOURS, READER = 40, "id-careapi"
+NEIGHBOURS = 40
 FACTS = ("person_id", "readmission_30d", "care_manager_contacts_12m", "pdc_180d", "has_caregiver", "age")
-TABLE = "patients (person_id bigint PRIMARY KEY, embedding vector({dimension}), readmission_30d boolean,"
-TABLE += " care_manager_contacts_12m int, pdc_180d real, has_caregiver boolean, age real)"
 UPSERT = "INSERT INTO patients VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (person_id) DO UPDATE SET"
 UPSERT += " embedding = EXCLUDED.embedding, readmission_30d = EXCLUDED.readmission_30d"
 NEAREST = f"SELECT {', '.join('p.' + f for f in FACTS)}, 1 - (p.embedding <=> q.embedding) FROM patients p, patients q"
@@ -42,13 +38,6 @@ def connect() -> psycopg.Connection[Any]:
     conn.autocommit = True
     register_vector(conn)
     return conn
-
-
-def create(conn: psycopg.Connection[Any], dimension: int) -> None:
-    conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-    conn.execute(f"CREATE TABLE IF NOT EXISTS {TABLE.format(dimension=dimension)}")
-    conn.execute("CREATE INDEX IF NOT EXISTS patients_embedding ON patients USING hnsw (embedding vector_cosine_ops)")
-    conn.execute(f'GRANT SELECT ON patients TO "{READER}"')
 
 
 def load(conn: psycopg.Connection[Any], frame: pd.DataFrame, embeddings: Array) -> int:
@@ -69,11 +58,8 @@ def rate(part: pd.DataFrame, column: str = "readmission_30d") -> float:
 def what_worked(neighbours: pd.DataFrame) -> dict[str, float]:
     """The precedent in numbers a care manager can act on: readmission with and without care-manager contact."""
     contacted = neighbours["care_manager_contacts_12m"] > 0
-    summary = {
-        "neighbours": len(neighbours),
-        "readmission_rate": rate(neighbours),
-        "mean_pdc": rate(neighbours, "pdc_180d"),
-    }
+    summary = {"neighbours": len(neighbours), "readmission_rate": rate(neighbours)}
+    summary |= {"mean_pdc": rate(neighbours, "pdc_180d")}
     summary |= {"readmission_rate_with_care_manager": rate(neighbours[contacted])}
     summary |= {"readmission_rate_without_care_manager": rate(neighbours[~contacted])}
     return summary | {"share_with_caregiver": rate(neighbours, "has_caregiver")}
@@ -82,11 +68,8 @@ def what_worked(neighbours: pd.DataFrame) -> dict[str, float]:
 def similar(conn: psycopg.Connection[Any], person_id: int, k: int = NEIGHBOURS) -> dict[str, Any]:
     rows = conn.execute(NEAREST, (person_id, person_id, k)).fetchall()
     neighbours = pd.DataFrame(rows, columns=[*FACTS, "similarity"])
-    return {
-        "person_id": person_id,
-        "neighbours": neighbours.to_dict(orient="records"),
-        "what_worked": what_worked(neighbours),
-    }
+    found = {"neighbours": neighbours.to_dict(orient="records"), "what_worked": what_worked(neighbours)}
+    return {"person_id": person_id} | found
 
 
 if __name__ == "__main__":
@@ -97,5 +80,4 @@ if __name__ == "__main__":
     cohort, scorer = pd.read_parquet(args.cohort), Scorer(args.model)
     vectors = scorer.contributions(cohort).to_numpy(dtype=np.float32)
     with connect() as connection:
-        create(connection, vectors.shape[1])
         print(f"loaded {load(connection, cohort, vectors)} patients with {vectors.shape[1]}-dimensional embeddings")

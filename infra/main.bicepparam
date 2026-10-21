@@ -12,6 +12,6 @@ param apiImage = readEnvironmentVariable('SERVICE_API_IMAGE_NAME', 'mcr.microsof
 param operatorIp = readEnvironmentVariable('OPERATOR_IP')
 param entraAdminObjectId = readEnvironmentVariable('ENTRA_ADMIN_OBJECT_ID')
 param entraAdminUpn = readEnvironmentVariable('ENTRA_ADMIN_UPN')
-param cicdPrincipalId = readEnvironmentVariable('CICD_PRINCIPAL_ID')
+param githubRepository = readEnvironmentVariable('GITHUB_REPOSITORY', '')
 param postgresSku = readEnvironmentVariable('POSTGRES_SKU', 'Standard_B1ms')
 param postgresLocation = readEnvironmentVariable('POSTGRES_LOCATION', 'swedencentral')

@@ -37,6 +37,10 @@ temptation was greatest.
 - Contributions are in log-odds units and are shown as numbers next to the text, so a user who
   wants the magnitude has it without the text pretending to a precision it does not have.
 
+## Revisit when
+
+Users need another language, which is one more template table, or explanations that combine drivers into a sentence, which must stay deterministic and auditable.
+
 ## Rejected
 
 - **A language model over the SHAP values.** Non-deterministic, unauditable, and able to
