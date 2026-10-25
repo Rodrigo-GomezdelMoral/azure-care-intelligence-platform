@@ -102,6 +102,8 @@ Experiment 001 compares the logistic regression, which ties the boosted model on
 The Bayesian sweep run `good_receipt_0y04c32yb9`, twelve trials on `cpu-cluster` on 2026-10-21,
 found a configuration that avoids 905,000 € per thousand contacts on the same test split, with
 precision 0.783, AUC 0.755 and calibration error 0.011; the gate registered it as challenger v3.
+[`evaluation-sweep-v3.json`](evaluation-sweep-v3.json) holds the twelve trials with their validation
+objective and hyperparameters, two of them tied at 865,000 €, and the best trial's test metrics.
 Three more readmitted patients found among 120 contacts is close to the noise of the split, and
 promoting it is the reviewer's decision in `deploy-prod.yml`. `train-staging.yml` publishes every
 sweep's best trial against the champion the same way.

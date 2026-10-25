@@ -21,6 +21,7 @@ var storageGrants = [
 ]
 
 resource storage 'Microsoft.Storage/storageAccounts@2026-06-01' = {
+  #disable-next-line BCP334 // the suffix is always the environment's long name, never under three characters
   name: 'st${replace(suffix, '-', '')}'
   location: location
   tags: tags
@@ -81,17 +82,10 @@ resource storageAccess 'Microsoft.Authorization/roleAssignments@2022-04-01' = [f
   properties: { roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', grant.role), principalId: grant.principalId, principalType: grant.type }
 }]
 
-resource workspaceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'to-shared-workspace'
-  scope: workspace
-  properties: diagnostics
-}
-
-resource vaultDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'to-shared-workspace'
-  scope: vault
-  properties: diagnostics
-}
+resource blobs 'Microsoft.Storage/storageAccounts/blobServices@2026-06-01' existing = { parent: storage, name: 'default' }
+resource workspaceDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = { name: 'to-shared-workspace', scope: workspace, properties: diagnostics }
+resource vaultDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = { name: 'to-shared-workspace', scope: vault, properties: diagnostics }
+resource blobDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = { name: 'to-shared-workspace', scope: blobs, properties: diagnostics }
 
 @description('Resource id of the workspace.')
 output workspaceId string = workspace.id

@@ -127,10 +127,12 @@ make api                            # the API locally, REQUIRE_AUTH=false
   because risk differs by age; the insurance gap closes at no cost with a need-proportional quota
   (experiment 003).
 - **The weekly deliverable.** The batch endpoint scored 40,000 patients and the call list holds 200
-  contacts with an expected 177,713 € avoided, 889 € per call, priced by the same code as the gate.
+  contacts with an expected 177,713 € avoided, 889 € per call, priced by the same code as the gate
+  (`docs/batch-weekly-2026-10-21.json`).
 
 `docs/evaluation.md` has the calibration curve and the subgroup breakdown;
-`docs/evaluation-v1.json` is the report behind every figure above.
+`docs/evaluation-v1.json` is the report behind every figure above; the sweep and the weekly batch have
+their own reports next to it.
 
 ## Cost
 

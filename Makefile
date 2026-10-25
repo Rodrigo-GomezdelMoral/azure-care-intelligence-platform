@@ -46,7 +46,7 @@ drift:
 	$(PYTHON) -m src.monitoring.drift --reference data/cohort.parquet --current $(CURRENT) --current-version $(VERSION)
 
 api:
-	uvicorn api.main:app --reload --port 8000
+	REQUIRE_AUTH=false uvicorn api.main:app --reload --port 8000
 
 pg-roles:
 	$(PYTHON) -m ops.pg_roles --admin $(PG_ADMIN)

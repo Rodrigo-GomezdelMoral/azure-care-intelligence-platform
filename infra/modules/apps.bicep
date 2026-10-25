@@ -25,6 +25,11 @@ resource containerEnvironment 'Microsoft.App/managedEnvironments@2026-07-01' = {
   properties: { appLogsConfiguration: { destination: 'azure-monitor' } }
 }
 
+resource environmentDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'to-shared-workspace', scope: containerEnvironment
+  properties: { workspaceId: logAnalyticsWorkspaceId, logs: [{ categoryGroup: 'allLogs', enabled: true }], metrics: [{ category: 'AllMetrics', enabled: true }] }
+}
+
 resource api 'Microsoft.App/containerApps@2026-07-01' = {
   name: 'ca-careapi'
   location: location
