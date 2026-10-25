@@ -56,8 +56,7 @@ resource operator 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2025-
 }
 
 resource postgresDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'to-shared-workspace'
-  scope: postgres
+  name: 'to-shared-workspace', scope: postgres
   properties: { workspaceId: logAnalyticsWorkspaceId, logs: [{ categoryGroup: 'allLogs', enabled: true }], metrics: [{ category: 'AllMetrics', enabled: true }] }
 }
 

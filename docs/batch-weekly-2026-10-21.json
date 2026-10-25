@@ -1,0 +1,14 @@
+{
+  "run": "batch-weekly, GitHub Actions, 2026-10-21",
+  "generated_at": "2026-10-21T16:46:01.110598Z",
+  "model": "readmission-risk version 1 (champion)",
+  "patients_scored": 40000,
+  "contacts": 200,
+  "expected_value_eur": 177712.97,
+  "expected_value_per_call_eur": 888.56,
+  "score_range": [
+    0.74,
+    0.84
+  ],
+  "note": "Summary only; the call list itself is tabular patient data and stays in PostgreSQL."
+}

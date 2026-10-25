@@ -63,12 +63,8 @@ def test_what_worked_compares_neighbours_with_and_without_care_manager_contact()
     assert summary["neighbours"] == 4 and summary["share_with_caregiver"] == 0.5
 
 
-def test_the_api_is_open_locally_and_demands_a_token_otherwise() -> None:
-    client = TestClient(api.app)
-    assert client.get("/healthz").json() == {"status": "ok"}
-    api.settings.require_auth = True
-    try:
-        assert client.get("/call-list").status_code == 401
-        assert client.get("/call-list", headers={"Authorization": "Bearer not-a-token"}).status_code == 401
-    finally:
-        api.settings.require_auth = False
+def test_the_api_demands_a_token_unless_a_local_run_turns_it_off() -> None:
+    client, local = TestClient(api.app), api.Settings(require_auth=False)
+    assert client.get("/healthz").json() == {"status": "ok"} and api.settings.require_auth and not local.require_auth
+    assert client.get("/call-list").status_code == 401
+    assert client.get("/call-list", headers={"Authorization": "Bearer not-a-token"}).status_code == 401

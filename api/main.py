@@ -21,16 +21,18 @@ class Settings(BaseSettings):
     entra_tenant_id: str = "00000000-0000-0000-0000-000000000000"
     api_audience: str = "api://00000000-0000-0000-0000-000000000000"
     api_app_role: str = "Care.Read"
-    require_auth: bool = False
+    require_auth: bool = True
 
 
 settings = Settings()
 app = FastAPI(title="Patient Risk & Adherence Intelligence", version="1.0")
-keys = jwt.PyJWKClient(f"https://login.microsoftonline.com/{settings.entra_tenant_id}/discovery/v2.0/keys")
+login, tenant = "https://login.microsoftonline.com", settings.entra_tenant_id
+keys = jwt.PyJWKClient(f"{login}/{tenant}/discovery/v2.0/keys")
+issuers = (f"https://sts.windows.net/{tenant}/", f"{login}/{tenant}/v2.0")  # v1 and v2 tokens of the one tenant
 
 
 def principal(request: Request) -> dict[str, Any]:
-    """Signature, audience and the app role; a missing or wrong token is 401, a token without the role 403."""
+    """Signature, audience, issuer and the app role; a missing or wrong token is 401, a token without the role 403."""
     if not settings.require_auth:
         return {"roles": [settings.api_app_role]}
     header = request.headers.get("authorization", "")
@@ -39,7 +41,7 @@ def principal(request: Request) -> dict[str, Any]:
     token = header.removeprefix("Bearer ")
     try:
         key = keys.get_signing_key_from_jwt(token).key
-        claims: dict[str, Any] = jwt.decode(token, key, algorithms=["RS256"], audience=settings.api_audience)
+        claims: dict[str, Any] = jwt.decode(token, key, ["RS256"], audience=settings.api_audience, issuer=issuers)
     except jwt.PyJWTError as error:
         raise HTTPException(401, str(error)) from error
     if settings.api_app_role not in claims.get("roles", []):
