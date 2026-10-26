@@ -60,6 +60,7 @@ flowchart TB
     CL -- "id-careaml, AcrPull" --> ACR
     MLW -- "diagnostics" --> LAW
     ACA -- "diagnostics" --> LAW
+    ST -- "diagnostics (blob)" --> LAW
 ```
 
 There is no private network, by the landing zone's decision; every arrow is an Entra-authenticated

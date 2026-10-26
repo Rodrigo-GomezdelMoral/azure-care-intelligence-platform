@@ -39,7 +39,8 @@ and dispatch workflows, `pull_request` for `train-dev.yml`, and `environment:pro
 
 - The online and batch endpoints use `aad_token` authentication; there are no keys.
 - The API requires an Entra token at the Container Apps ingress, and its code checks the
-  signature, the audience and the `Care.Read` app role: a token without the role gets 403.
+  signature, the audience, the tenant's issuer and the `Care.Read` app role: a token without the
+  role gets 403. The check is on by default and fails closed; local runs set `REQUIRE_AUTH=false`.
 
 ## Synthetic data and privacy by design
 
