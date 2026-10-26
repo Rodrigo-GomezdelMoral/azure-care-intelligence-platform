@@ -170,8 +170,8 @@ clinical decision.**
 ## Scope and simplifications
 
 - **Size.** The specification asks for at most 46 files and 1,200 lines of Python. This
-  repository has 59 tracked files outside `docs/` and `examples/`, 1,389 lines of application
-  Python against a ceiling of 1,400, 398 lines of tests against 400, and 400 lines of Bicep against
+  repository has 59 tracked files outside `docs/` and `examples/`, 1,391 lines of application
+  Python against a ceiling of 1,400, 394 lines of tests against 400, and 398 lines of Bicep against
   400. The specification's own layout, with six workflows, four component specs, three experiments
   and the serving path, does not fit in 46 files, and `tests/test_budget.py` enforces the ceilings
   above.
