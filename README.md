@@ -29,23 +29,24 @@ of who the list reaches.
 
 ## Lifecycle
 
-```mermaid
-flowchart LR
-    GEN["synthetic cohort<br/>fixed seed"] --> DA[("data asset<br/>patient-cohort:N")]
-    DA --> PIPE["prep → train → evaluate → register<br/>serverless, MLflow"]
-    PIPE --> GATE{"beats the champion on<br/>cost avoided?"}
-    GATE -- "yes" --> CH["challenger"]
-    GATE -- "no" --> NO["refused"]
-    CH --> REV{{"deploy-prod.yml<br/>named reviewer"}}
-    REV --> ON["online endpoint<br/>blue/green, SHAP + templates"]
-    REV --> BA["batch endpoint<br/>weekly call list"]
-    BA --> API["care manager API<br/>Care.Read"]
-    REV --> PG[("pgvector<br/>similar patients")]
-    PG --> API
-    DA --> DR["drift-check.yml"] -- "drift" --> PIPE
-```
+![From the synthetic cohort to the registry gate, the reviewed blue/green deployment, the weekly batch call list and drift checks that retrain but never promote](docs/images/lifecycle.png)
 
 `docs/architecture.md` has the full lifecycle and the network and identity diagram.
+
+![The platform's resource group as deployed, in the Azure portal](docs/images/resource-group.png)
+
+## In action
+
+This week's call list from the batch endpoint: the two hundred patients to call and the expected
+cost avoided.
+
+![The top ten of this week's call list, with risk and expected saving, and the total of 177,713 EUR for 200 patients](docs/images/call-list.png)
+
+The registered model scored live in Azure Machine Learning studio. Each driver is a SHAP
+contribution phrased by a fixed template; with adherence raised to 95 % for the same patient, the
+medication driver turns negative.
+
+![The online endpoint's Test tab returning SHAP drivers for a synthetic patient, the medication driver lowering the risk](docs/images/endpoint-test.png)
 
 ## What this demonstrates
 
@@ -166,29 +167,3 @@ month. Details in `docs/cost.md`.
 synthetic provenance, evaluation overall and by subgroup, limitations, and the ethical
 considerations around acting on a risk score. **The system prioritises outreach and never makes a
 clinical decision.**
-
-## Scope and simplifications
-
-- **Size.** The specification asks for at most 46 files and 1,200 lines of Python. This
-  repository has 59 tracked files outside `docs/` and `examples/`, 1,391 lines of application
-  Python against a ceiling of 1,400, 394 lines of tests against 400, and 398 lines of Bicep against
-  400. The specification's own layout, with six workflows, four component specs, three experiments
-  and the serving path, does not fit in 46 files, and `tests/test_budget.py` enforces the ceilings
-  above.
-- **One persistent resource that is not serverless.** `cpu-cluster` exists because batch
-  deployments only run on clusters and the sweep's trials need its identity; it sits at zero nodes
-  (ADR-002).
-- **MLflow 2.22, not 3.** The workspace's tracking service rejects MLflow 3's logged-model and alias
-  endpoints, so champion and challenger are version tags (ADR-001, ADR-003).
-- **Drift with evidently, not the managed monitor**, because production here is a weekly batch over
-  versioned assets with no timestamp (ADR-007).
-- **`train-dev.yml` runs on pull requests** rather than on every push to a feature branch, because
-  a pull request has a fixed OIDC subject and a place to comment.
-- **PostgreSQL B2s instead of B1ms**, for lack of regional capacity at deployment time.
-- **Component versions are content hashes** recorded with each run, not named releases; naming them
-  in a shared registry is the trigger ADR-001 sets for revisiting.
-- **The published cohort predates the deterministic generator.** `patient-cohort:1` is kept with its
-  SHA-256 and every metric comes from it; the generator now reproduces its own output exactly
-  (ADR-008).
-- **No outcome monitoring.** Comparing predicted with realised readmissions needs an outcome feed
-  this repository does not have (ADR-007).
