@@ -1,5 +1,7 @@
 # Patient Risk & Adherence Intelligence
 
+Built by **Rodrigo Martín Gómez del Moral Herranz** · [LinkedIn](https://www.linkedin.com/in/rodrigo-mart%C3%ADn-g%C3%B3mez-del-moral-herranz) · [Portfolio](https://rodrigogomez.es)
+
 Which two hundred patients should a care team call this week, and what does it save? A
 readmission-risk model on Azure Machine Learning whose headline number is **cost avoided per
 thousand patients contacted**, not AUC: a capacity-constrained expected-value threshold decides
@@ -15,6 +17,11 @@ fairness, and the model card says what the system must never be used for.
 tool-driven: it is supervised learning on tabular data with a deterministic serving path, and the
 rule *if you can write a function to handle the task, do that instead of using an AI agent* applies
 to the whole repository (ADR-013).
+
+This week's call list from the batch endpoint: the two hundred patients to call and the expected
+cost avoided.
+
+![The top ten of this week's call list, with risk and expected saving, and the total of 177,713 EUR for 200 patients](docs/images/call-list.png)
 
 ## The problem
 
@@ -33,14 +40,11 @@ of who the list reaches.
 
 `docs/architecture.md` has the full lifecycle and the network and identity diagram.
 
+![GitHub Actions deploys through OIDC to Azure Machine Learning, with its pipeline, models, online and batch endpoints and a cluster at zero nodes; PostgreSQL holds the call list and pgvector; the API serves it; logs go to the shared platform](docs/images/architecture.png)
+
 ![The platform's resource group as deployed, in the Azure portal](docs/images/resource-group.png)
 
 ## In action
-
-This week's call list from the batch endpoint: the two hundred patients to call and the expected
-cost avoided.
-
-![The top ten of this week's call list, with risk and expected saving, and the total of 177,713 EUR for 200 patients](docs/images/call-list.png)
 
 The registered model scored live in Azure Machine Learning studio. Each driver is a SHAP
 contribution phrased by a fixed template; with adherence raised to 95 % for the same patient, the
@@ -62,6 +66,11 @@ medication driver turns negative.
 | Precedents by cosine similarity over SHAP embeddings in PostgreSQL | `src/cohorts.py`, ADR-006 |
 | Drift that retrains but never promotes | `src/monitoring/drift.py`, `drift-check.yml`, ADR-007 |
 | Identity at every hop, no keys anywhere | `infra/`, `docs/security.md`, ADR-014 |
+
+Promotion is a reviewed blue/green: the candidate takes 10 % of the traffic, passes a smoke test,
+takes 100 % and becomes the champion, or rolls back.
+
+![A reviewer approves; the green candidate takes 10 %, passes the smoke test and takes 100 % before it is retagged champion, or traffic rolls back to blue](docs/images/bluegreen.png)
 
 ## Quick start
 
@@ -142,6 +151,18 @@ always-on line items are PostgreSQL B2s, about 26 € a month, and the online en
 `Standard_DS1_v2`, about 44 € a month, which is deleted between demonstrations. A persistent training node would cost 175 € a
 month. Details in `docs/cost.md`.
 
+## Well-Architected design
+
+How the design maps to the five pillars of the Azure Well-Architected Framework, and the trade-off accepted in each.
+
+| Pillar | Applied | Trade-off accepted |
+|---|---|---|
+| Reliability | Blue/green behind a named reviewer, with rollback; drift retrains but never promotes; the registry gate refuses a challenger that does not win | One region; the online endpoint is deleted between demonstrations, so the weekly batch is the path that is always there |
+| Security | Identity at every hop and no keys anywhere; app-role authorisation for the API; synthetic data only | No virtual network: app roles are the boundary (ADR-014) |
+| Cost Optimization | Serverless training at about five cents a run, the weekly batch at about one, and one cluster at zero nodes for batch and sweep trials (ADR-002) | PostgreSQL B2s, about 26 € a month, is always on; the online endpoint, about 44 € a month, is deleted between demonstrations |
+| Operational Excellence | Four components composed by `@pipeline`, every metric in MLflow, promotion through a GitHub Environment, scheduled drift checks | No feature store (ADR-010) and no real-time streaming (ADR-011): batch is the cadence |
+| Performance Efficiency | Forty thousand patients scored in one weekly batch; explanations by deterministic templates over SHAP, never a language model (ADR-012) | The boosted model is kept for the lifecycle although a logistic regression ties (experiment 001) |
+
 ## Decisions
 
 | ADR | Decision |
@@ -167,3 +188,7 @@ month. Details in `docs/cost.md`.
 synthetic provenance, evaluation overall and by subgroup, limitations, and the ethical
 considerations around acting on a risk score. **The system prioritises outreach and never makes a
 clinical decision.**
+
+## Author
+
+**Rodrigo Martín Gómez del Moral Herranz** · [LinkedIn](https://www.linkedin.com/in/rodrigo-mart%C3%ADn-g%C3%B3mez-del-moral-herranz) · [Portfolio](https://rodrigogomez.es)
