@@ -1,6 +1,8 @@
 # Patient Risk & Adherence Intelligence
 
-Built by **Rodrigo Martín Gómez del Moral Herranz** · [LinkedIn](https://www.linkedin.com/in/rodrigo-mart%C3%ADn-g%C3%B3mez-del-moral-herranz) · [Portfolio](https://rodrigogomez.es)
+Built by **Rodrigo Martín Gómez del Moral Herranz**
+
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Rodrigo-GomezdelMoral)&nbsp;&nbsp;[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTIwLjQ1IDIwLjQ1aC0zLjU2di01LjU3YzAtMS4zMy0uMDMtMy4wNC0xLjg1LTMuMDQtMS44NSAwLTIuMTQgMS40NS0yLjE0IDIuOTR2NS42N0g5LjM1VjloMy40MXYxLjU2aC4wNWMuNDgtLjkgMS42NC0xLjg1IDMuMzctMS44NSAzLjYgMCA0LjI3IDIuMzcgNC4yNyA1LjQ2djYuMjh6TTUuMzQgNy40M2EyLjA2IDIuMDYgMCAxIDEgMC00LjEyIDIuMDYgMi4wNiAwIDAgMSAwIDQuMTJ6TTcuMTIgMjAuNDVIMy41NlY5aDMuNTZ2MTEuNDV6TTIyLjIyIDBIMS43N0MuNzkgMCAwIC43NyAwIDEuNzN2MjAuNTRDMCAyMy4yMy43OSAyNCAxLjc3IDI0aDIwLjQ1Yy45OCAwIDEuNzgtLjc3IDEuNzgtMS43M1YxLjczQzI0IC43NyAyMy4yIDAgMjIuMjIgMHoiLz48L3N2Zz4%3D)](https://www.linkedin.com/in/rodrigo-mart%C3%ADn-g%C3%B3mez-del-moral-herranz)&nbsp;&nbsp;[![Portfolio](https://img.shields.io/badge/rodrigogomezdelmoralherranz.es-181717?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8%2BPHBhdGggZD0iTTIgMTJoMjBNMTIgMmExNSAxNSAwIDAgMSAwIDIwTTEyIDJhMTUgMTUgMCAwIDAgMCAyMCIvPjwvc3ZnPg%3D%3D)](https://rodrigogomezdelmoralherranz.es)
 
 Which two hundred patients should a care team call this week, and what does it save? A
 readmission-risk model on Azure Machine Learning whose headline number is **cost avoided per
@@ -34,13 +36,32 @@ hundred patients do I call this week, and what does it save me?"** This reposito
 a ranked list, the expected value of each call, the reason behind each score and a fairness audit
 of who the list reaches.
 
-## Lifecycle
+## What it does
+
+- Ranks the patients a care team should call this week and prices each call in expected cost avoided.
+- Explains every score in plain language from SHAP values, with fixed templates rather than a language model.
+- Audits the list for fairness across age bands and insurance, and measures the cost of mitigating it.
+- Runs the model lifecycle on Azure Machine Learning: a pipeline, gated registration, a reviewed blue/green deployment, a weekly batch and drift checks that retrain but never promote.
+- Uses synthetic data only; the model card says what the system must never be used for.
+
+## Repo card
+
+| | |
+|---|---|
+| **Type** | MLOps platform on the shared cloud platform |
+| **Azure services** | Azure Machine Learning (pipeline, registry, online and batch endpoints, a cluster at zero nodes), Azure Database for PostgreSQL with pgvector, Azure Container Apps (API), Key Vault, Azure Storage, Application Insights and alerts; shared: Container Registry and Log Analytics |
+| **AI** | Gradient boosting with scikit-learn, SHAP explanations and a CTGAN synthetic cohort; no language model and no agent |
+| **Stack** | Python 3.12 with FastAPI, MLflow and the Azure Machine Learning SDK |
+| **Security** | Identity at every hop and no keys; the `Care.Read` app role for the API |
+| **Infrastructure and delivery** | Bicep with azd; GitHub Actions with OIDC: training on pull requests, a sweep on merge, a reviewed production deployment, a weekly drift check and batch |
+
+## Architecture
+
+![GitHub Actions deploys through OIDC to Azure Machine Learning, with its pipeline, models, online and batch endpoints and a cluster at zero nodes; PostgreSQL holds the call list and pgvector; the API serves it; logs go to the shared platform](docs/images/architecture.png)
 
 ![From the synthetic cohort to the registry gate, the reviewed blue/green deployment, the weekly batch call list and drift checks that retrain but never promote](docs/images/lifecycle.png)
 
 `docs/architecture.md` has the full lifecycle and the network and identity diagram.
-
-![GitHub Actions deploys through OIDC to Azure Machine Learning, with its pipeline, models, online and batch endpoints and a cluster at zero nodes; PostgreSQL holds the call list and pgvector; the API serves it; logs go to the shared platform](docs/images/architecture.png)
 
 ![The platform's resource group as deployed, in the Azure portal](docs/images/resource-group.png)
 
@@ -71,49 +92,6 @@ Promotion is a reviewed blue/green: the candidate takes 10 % of the traffic, pas
 takes 100 % and becomes the champion, or rolls back.
 
 ![A reviewer approves; the green candidate takes 10 %, passes the smoke test and takes 100 % before it is retagged champion, or traffic rolls back to blue](docs/images/bluegreen.png)
-
-## Quick start
-
-Prerequisites: the landing zone deployed, Python 3.12, the Azure CLI with the `ml` extension, and
-an Azure login with Contributor on `rg-careintel-prod-swc`.
-
-```
-python -m venv .venv && . .venv/bin/activate
-make install install-synth          # runtime, tooling, and SDV + torch for the generator
-make check                          # ruff, mypy, pytest with the budget
-make lz-env                         # landing zone outputs into the azd environment
-azd env set OPERATOR_IP <your public address>
-azd env set GITHUB_SUBJECT_PREFIX "$(gh api repos/<owner>/<repository>/actions/oidc/customization/sub --jq .sub_claim_prefix)"
-make deploy                         # infrastructure and API; on a machine without Docker,
-                                    # az deployment group create -f infra/main.bicep -p infra/main.bicepparam
-make pg-roles PG_ADMIN=<your UPN>   # PostgreSQL roles, schema and grants, as the Entra admin
-cp .env.example .env                # then fill in the values from `azd env get-values`
-make synth                          # the synthetic cohort, deterministic for the seed
-make data                           # registers it as the next version of patient-cohort
-make pipeline                       # prep → train → evaluate → register, on serverless compute
-make endpoints                      # online and batch endpoints for the champion
-make batch                          # this week's call list into PostgreSQL
-make api                            # the API locally, REQUIRE_AUTH=false
-```
-
-### GitHub bootstrap
-
-1. **App registration** for the API, with the app role `Care.Read` assigned to the people who may
-   read the call list; set `API_APP_CLIENT_ID` in the azd environment and deploy again.
-2. **Repository secrets** `AZURE_CLIENT_ID`, the client id of `id-carecicd` from the deployment
-   output `cicdClientId`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and `AML_IDENTITY_CLIENT_ID`,
-   the output `amlIdentityClientId`; **repository variable** `POSTGRES_HOST`.
-3. **Environment `production`** with yourself as required reviewer. Without the protection rule
-   `deploy-prod.yml` would deploy on dispatch.
-4. **Federated credentials** are created by Bicep on `id-carecicd`, one per OIDC subject:
-   `ref:refs/heads/main` for the merge, schedule and dispatch workflows, `pull_request` for
-   `train-dev.yml`, and `environment:production` for `deploy-prod.yml`. A job that declares an
-   environment presents `environment:<name>` as its subject rather than the branch, so without the
-   third credential the first production deployment fails with `AADSTS700213`. Each subject starts
-   with the repository's prefix exactly as GitHub issues it, `GITHUB_SUBJECT_PREFIX` above: for a
-   repository with immutable subject claims it carries the owner and repository ids,
-   `repo:<owner>@<owner id>/<repository>@<repository id>`, and a credential written as
-   `repo:<owner>/<repository>` fails with the same `AADSTS700213`.
 
 ## Results
 
@@ -163,6 +141,49 @@ How the design maps to the five pillars of the Azure Well-Architected Framework,
 | Operational Excellence | Four components composed by `@pipeline`, every metric in MLflow, promotion through a GitHub Environment, scheduled drift checks | No feature store (ADR-010) and no real-time streaming (ADR-011): batch is the cadence |
 | Performance Efficiency | Forty thousand patients scored in one weekly batch; explanations by deterministic templates over SHAP, never a language model (ADR-012) | The boosted model is kept for the lifecycle although a logistic regression ties (experiment 001) |
 
+## Deploy
+
+Prerequisites: the landing zone deployed, Python 3.12, the Azure CLI with the `ml` extension, and
+an Azure login with Contributor on `rg-careintel-prod-swc`.
+
+```
+python -m venv .venv && . .venv/bin/activate
+make install install-synth          # runtime, tooling, and SDV + torch for the generator
+make check                          # ruff, mypy, pytest with the budget
+make lz-env                         # landing zone outputs into the azd environment
+azd env set OPERATOR_IP <your public address>
+azd env set GITHUB_SUBJECT_PREFIX "$(gh api repos/<owner>/<repository>/actions/oidc/customization/sub --jq .sub_claim_prefix)"
+make deploy                         # infrastructure and API; on a machine without Docker,
+                                    # az deployment group create -f infra/main.bicep -p infra/main.bicepparam
+make pg-roles PG_ADMIN=<your UPN>   # PostgreSQL roles, schema and grants, as the Entra admin
+cp .env.example .env                # then fill in the values from `azd env get-values`
+make synth                          # the synthetic cohort, deterministic for the seed
+make data                           # registers it as the next version of patient-cohort
+make pipeline                       # prep → train → evaluate → register, on serverless compute
+make endpoints                      # online and batch endpoints for the champion
+make batch                          # this week's call list into PostgreSQL
+make api                            # the API locally, REQUIRE_AUTH=false
+```
+
+### GitHub bootstrap
+
+1. **App registration** for the API, with the app role `Care.Read` assigned to the people who may
+   read the call list; set `API_APP_CLIENT_ID` in the azd environment and deploy again.
+2. **Repository secrets** `AZURE_CLIENT_ID`, the client id of `id-carecicd` from the deployment
+   output `cicdClientId`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` and `AML_IDENTITY_CLIENT_ID`,
+   the output `amlIdentityClientId`; **repository variable** `POSTGRES_HOST`.
+3. **Environment `production`** with yourself as required reviewer. Without the protection rule
+   `deploy-prod.yml` would deploy on dispatch.
+4. **Federated credentials** are created by Bicep on `id-carecicd`, one per OIDC subject:
+   `ref:refs/heads/main` for the merge, schedule and dispatch workflows, `pull_request` for
+   `train-dev.yml`, and `environment:production` for `deploy-prod.yml`. A job that declares an
+   environment presents `environment:<name>` as its subject rather than the branch, so without the
+   third credential the first production deployment fails with `AADSTS700213`. Each subject starts
+   with the repository's prefix exactly as GitHub issues it, `GITHUB_SUBJECT_PREFIX` above: for a
+   repository with immutable subject claims it carries the owner and repository ids,
+   `repo:<owner>@<owner id>/<repository>@<repository id>`, and a credential written as
+   `repo:<owner>/<repository>` fails with the same `AADSTS700213`.
+
 ## Decisions
 
 | ADR | Decision |
@@ -191,4 +212,6 @@ clinical decision.**
 
 ## Author
 
-**Rodrigo Martín Gómez del Moral Herranz** · [LinkedIn](https://www.linkedin.com/in/rodrigo-mart%C3%ADn-g%C3%B3mez-del-moral-herranz) · [Portfolio](https://rodrigogomez.es)
+**Rodrigo Martín Gómez del Moral Herranz**
+
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Rodrigo-GomezdelMoral)&nbsp;&nbsp;[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTIwLjQ1IDIwLjQ1aC0zLjU2di01LjU3YzAtMS4zMy0uMDMtMy4wNC0xLjg1LTMuMDQtMS44NSAwLTIuMTQgMS40NS0yLjE0IDIuOTR2NS42N0g5LjM1VjloMy40MXYxLjU2aC4wNWMuNDgtLjkgMS42NC0xLjg1IDMuMzctMS44NSAzLjYgMCA0LjI3IDIuMzcgNC4yNyA1LjQ2djYuMjh6TTUuMzQgNy40M2EyLjA2IDIuMDYgMCAxIDEgMC00LjEyIDIuMDYgMi4wNiAwIDAgMSAwIDQuMTJ6TTcuMTIgMjAuNDVIMy41NlY5aDMuNTZ2MTEuNDV6TTIyLjIyIDBIMS43N0MuNzkgMCAwIC43NyAwIDEuNzN2MjAuNTRDMCAyMy4yMy43OSAyNCAxLjc3IDI0aDIwLjQ1Yy45OCAwIDEuNzgtLjc3IDEuNzgtMS43M1YxLjczQzI0IC43NyAyMy4yIDAgMjIuMjIgMHoiLz48L3N2Zz4%3D)](https://www.linkedin.com/in/rodrigo-mart%C3%ADn-g%C3%B3mez-del-moral-herranz)&nbsp;&nbsp;[![Portfolio](https://img.shields.io/badge/rodrigogomezdelmoralherranz.es-181717?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8%2BPHBhdGggZD0iTTIgMTJoMjBNMTIgMmExNSAxNSAwIDAgMSAwIDIwTTEyIDJhMTUgMTUgMCAwIDAgMCAyMCIvPjwvc3ZnPg%3D%3D)](https://rodrigogomezdelmoralherranz.es)
