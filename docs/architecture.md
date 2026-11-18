@@ -64,6 +64,6 @@ flowchart TB
 ```
 
 There is no private network, by the landing zone's decision; every arrow is an Entra-authenticated
-call with the narrowest role (`docs/security.md`, ADR-014). Alerts go to the landing zone's action
+call with the narrowest role ([`docs/security.md`](security.md), ADR-014). Alerts go to the landing zone's action
 group: a failed run in the workspace, and server errors from the API. Drift raises a GitHub issue,
 because it is computed in a workflow (ADR-007).

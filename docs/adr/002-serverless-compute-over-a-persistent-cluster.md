@@ -38,7 +38,7 @@ working.
 ## Consequences
 
 - A training run costs a few node-minutes, and every step pays a provisioning delay of one to two
-  minutes. `docs/cost.md` prices a run and the persistent alternative: one `Standard_DS3_v2` node
+  minutes. [`docs/cost.md`](../cost.md) prices a run and the persistent alternative: one `Standard_DS3_v2` node
   kept warm is about 175 € a month at list price.
 - The first run after an environment change builds an image, about four minutes; later runs reuse
   it.

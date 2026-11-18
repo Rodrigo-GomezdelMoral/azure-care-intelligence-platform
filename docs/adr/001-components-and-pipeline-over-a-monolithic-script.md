@@ -53,7 +53,7 @@ The repository therefore pins MLflow 2.22.5, and champion and challenger are the
   local `mlruns/`, which is how its tests and its standalone check work; the pipeline is the only
   thing that needs a workspace.
 - A pipeline run is four jobs, and serverless compute provisions a node for each, so the run
-  takes longer than the arithmetic of its steps; `docs/cost.md` prices it and compares it with
+  takes longer than the arithmetic of its steps; [`docs/cost.md`](../cost.md) prices it and compares it with
   the persistent cluster that was rejected (ADR-002).
 - The sweep (phase 6) wraps `train` unchanged, batch scoring (phase 7) loads the registered
   version, and the drift trigger (phase 8) resubmits this pipeline; none of them needs a new

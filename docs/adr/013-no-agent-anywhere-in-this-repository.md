@@ -4,12 +4,12 @@
 
 ## Context
 
-The rest of this portfolio is built on Microsoft Agent Framework: a retrieval platform and a
+Other workloads on the shared platform are built on Microsoft Agent Framework: a retrieval platform and a
 field-operations copilot where language models plan, call tools and hand work to each other. A
-reader moving from those repositories to this one will notice that nothing here is an agent, and
+reader moving from those workloads to this one will notice that nothing here is an agent, and
 should find out why in one place.
 
-The rule the portfolio follows is that if a task can be written as a function, it should be a
+The rule this repository follows is that if a task can be written as a function, it should be a
 function. An agent earns its place when the task is open-ended: the inputs vary in shape, the
 steps are not known in advance, and judgement over tools is the work.
 
@@ -42,7 +42,7 @@ setting; a drift triage that improvises is an unaudited decision about which mod
 
 The task stops having a known shape: for example, if care managers need to ask open questions over
 clinical notes, where retrieval and reasoning are the work. That would be a separate service with
-its own evaluation, as the copilot in this portfolio is, not a change to this one.
+its own evaluation, not a change to this one.
 
 ## Rejected
 
