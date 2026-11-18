@@ -28,16 +28,16 @@ make every model look perfect.
    non-adherence, comorbidity burden (a Charlson-like index), a prior admission, age, deprivation
    and heart failure, and falls with a caregiver. Measurements (HbA1c, blood pressure, LDL, eGFR,
    BMI) depend on the conditions.
-2. **CTGAN** (SDV 2.0) is fitted on the seed's **root layer** — the seven variables without a
+2. **CTGAN** (SDV 2.0) is fitted on the seed's **root layer** (the seven variables without a
    parent in the graph: sex, age, urbanicity, deprivation, language barrier, employment and
-   insurance — and samples 40,000 rows of it under **conditions that impose the documented
-   categorical marginals** (`sdv.sampling.Condition`). Every variable with a parent — household,
-   conditions, prescriptions, adherence, contacts, measurements — and the **label** are then
+   insurance) and samples 40,000 rows of it under **conditions that impose the documented
+   categorical marginals** (`sdv.sampling.Condition`). Every variable with a parent (household,
+   conditions, prescriptions, adherence, contacts, measurements) and the **label** are then
    computed by the same equations on the sampled roots, with Bernoulli noise. The signal is
    guaranteed to be there, and it is guaranteed not to be deterministic.
 
-Clinical columns carry OMOP Common Data Model names — `person_id`, `gender_concept_id` (8507 and
-8532), `condition_*`, `drug_era_count`, `visit_occurrence_count_12m`, `measurement_*` — so a
+Clinical columns carry OMOP Common Data Model names: `person_id`, `gender_concept_id` (8507 and
+8532), `condition_*`, `drug_era_count`, `visit_occurrence_count_12m`, `measurement_*`, so a
 health-data reviewer recognises the shape at a glance. `data/schema.json` records every column's
 type and role (demographic, socioeconomic, comorbidity, prescription, contact, measurement,
 outcome) and is what `prep` validates incoming data against. `ops/data_asset.py` registers the
@@ -58,13 +58,13 @@ gradients (because they are redrawn) and lost nearly everything else: with an 8,
 adherence, and the female share moved from 0.52 in the seed to 0.38 and then 0.73 between runs.
 
 Restricting CTGAN to the root layer restored every dependent relationship exactly (the equations
-compute them), but plain sampling still drifted on low-cardinality categoricals — female share
+compute them), but plain sampling still drifted on low-cardinality categoricals (female share
 0.39 to 0.67 across seeds of 8,000 and 40,000 rows and 100 to 300 epochs, language barrier 0.13
-to 0.23 against 0.08 — a known weakness of CTGAN with small categorical columns. Conditional
+to 0.23 against 0.08), a known weakness of CTGAN with small categorical columns. Conditional
 sampling fixes it: the categorical roots are independent by construction in the seed, so one
 condition per combination of their levels, sized by the product of the marginals (108
 conditions), reproduces them exactly (female share 0.519, language barrier 0.079, urbanicity
-0.25/0.45/0.30 in the published cohort), and CTGAN contributes the continuous roots — age
+0.25/0.45/0.30 in the published cohort), and CTGAN contributes the continuous roots: age
 67.9 ± 11.8 against 67.1 ± 10.9 in the seed, deprivation 4.34 against 3.99. The published cohort
 has a readmission rate of 0.189 and a mean PDC of 0.675. Generation takes under three minutes on
 a laptop CPU (100 epochs).
@@ -107,12 +107,12 @@ version, the component versions and the parameters of each run.
 
 - **No number in this repository is a clinical result.** The AUC, the calibration, the fairness
   disparities and the cost avoided are properties of this generator and of the models trained on
-  it, and the README, the model card and `docs/evaluation.md` say so. They demonstrate the
+  it, and the README, the model card and [`docs/evaluation.md`](../evaluation.md) say so. They demonstrate the
   lifecycle and the arguments, not the medicine.
 - The disparities the fairness audit finds are the ones the generator induces through
   deprivation, language barrier and age; they are realistic in direction, invented in size.
-- CTGAN's contribution is deliberately narrow — the joint distribution of age and deprivation
-  under the documented categorical marginals — because that is the part of the problem it
+- CTGAN's contribution is deliberately narrow (the joint distribution of age and deprivation
+  under the documented categorical marginals) because that is the part of the problem it
   measurably does well here; the structure that gives the data its meaning is explicit code that
   a reviewer can read.
 - Generation needs `torch`, kept in `requirements-synth.txt` so the runtime image, the components

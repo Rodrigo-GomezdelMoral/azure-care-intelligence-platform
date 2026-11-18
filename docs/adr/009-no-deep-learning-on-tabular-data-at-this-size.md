@@ -34,7 +34,7 @@ look more advanced in a portfolio.
 
 - Training takes under a minute per run on one CPU node, and the sweep explores the boosted
   model's space in twelve trials.
-- The repository does not demonstrate deep learning, on purpose. The rest of the portfolio covers
+- The repository does not demonstrate deep learning, on purpose. Other workloads on the shared platform cover
   generative models.
 
 ## Revisit when
