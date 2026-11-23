@@ -94,7 +94,7 @@ tuning = pipeline(tune, name="tuning", display_name="Readmission risk tuning", d
 def submit(client: MLClient, job: PipelineJob, identity: str, tags: dict[str, str], wait: bool) -> PipelineJob:
     """Steps run as the pipeline identity; serverless offers no system-assigned one and user tokens cannot pull.
 
-    Command nodes carry it; a sweep node's identity is dropped by SDK and service alike (measured; see CLAUDE.md),
+    Command nodes carry it; a sweep node's identity is dropped by SDK and service alike (measured),
     so the trials run on the scale-to-zero cluster, whose own identity is the same `id-careaml`.
     """
     job.identity = ManagedIdentityConfiguration(client_id=identity)
