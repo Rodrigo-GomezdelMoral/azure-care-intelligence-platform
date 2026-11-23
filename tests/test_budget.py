@@ -10,7 +10,7 @@ MAX_APP_LINES, MAX_TEST_LINES, MAX_BICEP_LINES = (
     1400,
     400,
     400,
-)  # 1,200 in the specification; raised in phase 7, see CLAUDE.md
+)  # 1,200 in the specification; raised in phase 7
 MAX_DEPTH, MAX_FUNCTION_LINES, MAX_COMMENTS = 3, 35, 24
 
 
